@@ -1,7 +1,11 @@
 const express = require("express");
 const app = express();
+const z = require("zod");
+const router = express.Router();
+
+module.exports = router;
 
 
-const router = express.router();
+app.post("/signup",(req , res ) => {
 
-module.export = router;
+})
