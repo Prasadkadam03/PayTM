@@ -7,7 +7,7 @@ const JWT_SECRET = require("../config");
 
 
 const signupSchema = z.object({
-    username : z.string(),
+    username : z.string().email(),
     firstName : z.string(),
     lastName : z.string(),
     password : z.string(),
@@ -50,6 +50,44 @@ router.post("/signup", async (req , res ) => {
             token,
         })
     }
+})
+
+const signinSchema = z.object({
+    username : z.string().email(),
+    password : z.string(),
+})
+
+router.post("/signin", async (req , res ) => {
+    
+    const body = req.body;
+    const {success} = signinSchema.safeParse(req.body)
+    if (!success) {
+
+        return res.status(411).json({
+            message : "Incorrect inputs "
+        })
+    
+    }
+
+    const user = await User.findOne({
+        username : req.body.username,
+        password : req.body.password
+    })
+    
+    if(user) {
+        const userID = User._id;
+        const token = jwt.sign({userID} , JWT_SECRET);
+
+        res.status(201).json({
+            message: "User Login succesfully",
+            token,
+        });
+        return;
+    }
+
+    return res.status(411).json({
+        message : "Error while login"
+    })
 })
 
 module.exports = router;
