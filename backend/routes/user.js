@@ -4,6 +4,7 @@ const z = require("zod");
 const router = express.Router();
 const {User} = require("../db");
 const JWT_SECRET = require("../config");
+const { authMiddleware } = require("../middleware");
 
 
 const signupSchema = z.object({
@@ -57,14 +58,14 @@ const signinSchema = z.object({
     password : z.string(),
 })
 
-router.post("/signin", async (req , res ) => {
+router.post("/signin",async (req , res ) => {
     
     const body = req.body;
     const {success} = signinSchema.safeParse(req.body)
     if (!success) {
 
         return res.status(411).json({
-            message : "Incorrect inputs "
+            message : "Incorrect inputs"
         })
     
     }
@@ -88,6 +89,35 @@ router.post("/signin", async (req , res ) => {
     return res.status(411).json({
         message : "Error while login"
     })
+})
+
+const updateUserSchema = z.object({
+    username : z.string().email().optional(),
+    firstName : z.string().optional(),
+    lastName : z.string().optional(),
+    password : z.string().optional(),
+})
+
+router.put("/", authMiddleware,async (req , res ) => {
+    const {success} = updateUserSchema.safeParse(req.body);
+    if(!success) {
+        return res.json({
+            msg : "Incorrect Inputs"
+        })
+    }
+
+    const user = await User.findOne({
+        username : userID
+    })
+
+    await User.updateOne(req.body , {
+        _id : req.UserId
+    })
+
+    res.json({
+        msg : " Updated successfully"
+    })
+
 })
 
 module.exports = router;
