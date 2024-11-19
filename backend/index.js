@@ -1,16 +1,16 @@
 const express = require("express");
 const app = express();
-const mainRouter = require("./routes/index.js")
 const cors = require("cors")
-const jwt = require("jsonwebtoken");
+app.use(express.json());
+const mainRouter = require("./routes/index.js")
+const userRouter = require("./routes/user.js")
 
 app.use("/api/v1",mainRouter);
+app.use("/api/v1/user",userRouter);
 app.use(cors());
 
-const Port = 3000;
-app.use(express.json());
 
 
 
 
-app.listen(Port);
+app.listen(3000);
