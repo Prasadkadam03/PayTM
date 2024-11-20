@@ -1,6 +1,7 @@
 
 // backend/db.js
 const mongoose = require('mongoose');
+const { number, Schema } = require('zod');
 
 mongoose.connect("mongodb://localhost:27017/PayTm");
 
@@ -34,9 +35,27 @@ const userSchema = new mongoose.Schema({
     }
 });
 
+const accountsSchema = new mongoose.Schema({
+
+    userId : {
+        type : mongoose.Schema.Types.ObjectId ,
+        ref : "User",
+        require : true ,
+    } , 
+    Balance : {
+        type : number ,
+        require : true ,
+        trim : true ,
+
+
+    }
+});
+
 // Create a model from the schema
 const User = mongoose.model('User', userSchema);
+const Account = mongoose.model('Account', accountsSchema);
 
 module.exports = {
-	User
+	User,
+    Account
 };
