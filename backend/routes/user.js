@@ -2,7 +2,7 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 const z = require("zod");
 const router = express.Router();
-const {User} = require("../db");
+const {User, Account} = require("../db");
 const JWT_SECRET = require("../config");
 const { authMiddleware } = require("../middleware");
 
@@ -42,9 +42,22 @@ router.post("/signup", async (req , res ) => {
         firstName : req.body.firstName,
         lastName : req.body.lastName,
         password : req.body.password,
-    }) 
-    const userID = User._id;
-    const token = jwt.sign({userID} , JWT_SECRET);
+    })
+
+    const userId = user._id;
+
+    const accBalance = await Account.create({
+        userId,
+        balance: 1 + Math.random() * 10000 ,
+    })
+
+    if(!accBalance) {
+        return res.status(403).json({
+            msg : "Cannot update"
+        })
+    }
+
+    const token = jwt.sign({userId} , JWT_SECRET);
     if (user) {
         res.status(201).json({
             message: "User created successfully",
@@ -148,5 +161,6 @@ router.get("/bulk", async (req, res) => {
         }))
     })
 })
+
 
 module.exports = router;
