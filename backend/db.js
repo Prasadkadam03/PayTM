@@ -3,7 +3,9 @@
 const mongoose = require('mongoose');
 const { number, Schema } = require('zod');
 
-mongoose.connect("mongodb://localhost:27017/PayTm");
+//mongoose.connect('mongodb://localhost:27017,localhost:27018,localhost:27019/test?' +'replicaSet=rs');
+//mongoose.connect("mongodb://localhost:27017/PayTm");
+mongoose.connect("mongodb+srv://prasadkkadam01:7LspsUmQVWVa0XBI@cluster0.hvvw2i6.mongodb.net/PayTm");
 
 // Create a Schema for Users
 const userSchema = new mongoose.Schema({

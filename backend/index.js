@@ -8,7 +8,7 @@ const accountRouter = require("./routes/account.js")
 
 app.use("/api/v1",mainRouter);
 app.use("/api/v1/user",userRouter);
-app.use("/api/v1/user",accountRouter);
+app.use("/api/v1/account",accountRouter);
 app.use(cors());
 
 
