@@ -1,7 +1,7 @@
 import { Heading } from "../Components/Heading"
 import {SubHeading} from "../Components/SubHeading"
 import {InputBox} from "../Components/InputBox"
-import { Button } from "../Components/Buttion"
+import { Button } from "../Components/Button"
 import { ButtonWarning } from "../Components/BottomWarning"
 
 
@@ -9,7 +9,7 @@ export const Signin = () => {
     return <div className="bg-zinc-700 h-screen flex justify-center">
         <div className="flex flex-col  justify-center">
 
-            <div className=" rounded-lg bg-white w-110 text-center shadow-xl  hover:shadow-lime-200/50  px-4">
+            <div className=" rounded-lg bg-white w-110 text-center shadow-xl  hover:shadow-lime-300/20  px-4">
                 <Heading label={"SIGN IN"} />
                 <SubHeading label={"Enter your credentials to Access your account"} />
 
