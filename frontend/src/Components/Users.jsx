@@ -23,7 +23,7 @@ export const Users = () => {
 }
 
 function User({ user }) {
-    return <div className="flex rounded-lg justify-between px-4 shadow hover:shadow-cyan-200/100">
+    return <div className="flex rounded-lg justify-between px-4 bg-white shadow-md hover:shadow-cyan-400/50">
         <div className="flex">
             <div className="rounded-full h-12 w-12 bg-slate-200 flex justify-center mt-1 mr-2">
                 <div className="flex flex-col justify-center h-full text-xl">
