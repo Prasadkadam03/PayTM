@@ -4,7 +4,7 @@ import { Users } from "../Components/Users"
 
 
 export const Dashboard = () => {
-    return <div className="bg-zinc-50 h-screen px-8">
+    return <div className="bg-zinc-200 min-h-screen h-full px-8">
         <AppBar />
         <div className="p-8">
             <Balance label={10000} />
