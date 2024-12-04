@@ -6,10 +6,10 @@ const mainRouter = require("./routes/index.js")
 const userRouter = require("./routes/user.js")
 const accountRouter = require("./routes/account.js")
 
+app.use(cors());
 app.use("/api/v1",mainRouter);
 app.use("/api/v1/user",userRouter);
 app.use("/api/v1/account",accountRouter);
-app.use(cors());
 
 
 

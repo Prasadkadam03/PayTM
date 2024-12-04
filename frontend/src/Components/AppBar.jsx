@@ -1,7 +1,7 @@
 export const AppBar = () => {
     return <div className="py-6">
         <div className="flex justify-between rounded-lg p-2  bg-white shadow-2xl  hover:shadow-cyan-200/100 " >
-            <div className="font-bold text-4xl text-cyan-500 px-4">
+            <div className="font-bold font-sans text-4xl text-cyan-500 px-4">
                 PayTm
             </div>
             <div className="flex justify-center h-full ">
