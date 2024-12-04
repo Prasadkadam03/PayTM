@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Button } from "./Button"
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 export const Users = () => {
 
@@ -30,6 +31,7 @@ export const Users = () => {
 }
 
 function User({ user }) {
+    const navigate = useNavigate();
     return <div className="py-1">
         <div className="flex rounded-lg justify-between px-4 bg-white shadow-md hover:shadow-cyan-400/50">
             <div className="flex">
@@ -46,7 +48,9 @@ function User({ user }) {
             </div>
 
             <div >
-                <Button label={"Send Money"} />
+                <Button onPress={(e)  => {
+                    navigate("/send?uname=" + user.username + "&fname=" + user.firstName + "&lname=" + user.lastName);
+                }} label={"Send Money"} />
             </div>
         </div>
     </div>
