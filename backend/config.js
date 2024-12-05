@@ -1,3 +1,3 @@
-const JWT_SECRET = "PrasadSECRET";
-
-module.exports = JWT_SECRET;
+module.exports = {
+	JWT_SECRET: "your-jwt-secret"
+}

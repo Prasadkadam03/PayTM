@@ -1,11 +1,10 @@
-
 // backend/db.js
 const mongoose = require('mongoose');
-const { number, Schema } = require('zod');
 
-//mongoose.connect('mongodb://localhost:27017,localhost:27018,localhost:27019/test?' +'replicaSet=rs');
-//mongoose.connect("mongodb://localhost:27017/PayTm");
+
 mongoose.connect("mongodb+srv://prasadkkadam01:7LspsUmQVWVa0XBI@cluster0.hvvw2i6.mongodb.net/PayTm");
+
+//mongoose.connect("mongodb+srv://kirags123:8qPEa8KTKBEh2bss@cluster0.f3qlbuo.mongodb.net/PayTm-PKK")
 
 // Create a Schema for Users
 const userSchema = new mongoose.Schema({
@@ -38,22 +37,25 @@ const userSchema = new mongoose.Schema({
 });
 
 const accountSchema = new mongoose.Schema({
-    userId : {
-        type : mongoose.Schema.Types.ObjectId ,
-        ref: "User",
-        required : true 
-    } , 
-    balance : {
-        type : Number ,
-        required : true ,
+    userId: {
+        type: mongoose.Schema.Types.ObjectId, // Reference to User model
+        ref: 'User',
+        required: true
+    },
+    balance: {
+        type: Number,
+        required: true
     }
 });
 
-// Create a model from the schema
-const User = mongoose.model('User', userSchema);
 const Account = mongoose.model('Account', accountSchema);
+const User = mongoose.model('User', userSchema);
 
 module.exports = {
 	User,
-    Account,
+    Account
 };
+
+//mongoose.connect('mongodb://localhost:27017,localhost:27018,localhost:27019/test?' +'replicaSet=rs');
+//mongoose.connect("mongodb://localhost:27017/PayTm");
+//mongoose.connect("mongodb+srv://prasadkkadam01:7LspsUmQVWVa0XBI@cluster0.hvvw2i6.mongodb.net/PayTm");
