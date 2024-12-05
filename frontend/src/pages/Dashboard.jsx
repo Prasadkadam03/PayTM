@@ -10,31 +10,11 @@ export const Dashboard = () => {
 
     const [balance, setBalance] = useState(null);
     const navigate = useNavigate();
-    // useEffect(() => {
-    //     console.log("start");
-    //     axios
-    //         .get("http://localhost:3000/api/v1/account/balance", {
-    //             headers: {
-    //                 Authorization: "Bearer " + localStorage.getItem("token"),
-    //             },
-    //         })
-    //         .then((response) => {
-    //             setBalance(response.data.balance);
-    //             console.log("then");
-    //         })
-    //         .catch((err) => {
-    //             console.error("Error fetching balance:", err);
-    //             setBalance(0);
-    //             console.log("catch");
-    //         });
-    // }, []);
+   
 
     useEffect(() => {
         const userToken = localStorage.getItem("token");
     
-        // Check if token exists in local storage
-        
-          // Fetch balance if token exists
           axios.get("http://localhost:3000/api/v1/account/balance", {
               headers: {
                 authorization: "Bearer " + userToken,
