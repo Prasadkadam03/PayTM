@@ -49,7 +49,7 @@ function User({ user }) {
 
             <div >
                 <Button onPress={(e)  => {
-                    navigate("/send?uname=" + user.username + "&fname=" + user.firstName + "&lname=" + user.lastName);
+                    navigate("/send?id=" + user._id + "&fname=" + user.firstName + "&lname=" + user.lastName);
                 }} label={"Send Money"} />
             </div>
         </div>

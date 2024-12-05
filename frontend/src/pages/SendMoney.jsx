@@ -9,7 +9,7 @@ export const SendMoney = () => {
 
     const [searchParams] = useSearchParams();
 
-    const uname = searchParams.get("uname");
+    const id = searchParams.get("id");
     const fname = searchParams.get("fname");
     const lname = searchParams.get("lname");
 
@@ -38,7 +38,7 @@ export const SendMoney = () => {
 
                 <Button onPress={()=> {
                     axios.post("http://localhost:3000/api/v1/account/transfer" , {
-                        to : uname,
+                        to : id,
                         amount : Amount,
                     },{
                         headers: {
@@ -46,7 +46,7 @@ export const SendMoney = () => {
                         }
                     })
                     .then((response) => {
-                        alert("Initiate transfer")
+                        alert("transfer successfull")
                     })
                 }} label={"Initiate transfer"} />
             </div>
