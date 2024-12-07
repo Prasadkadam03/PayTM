@@ -1,11 +1,11 @@
 // backend/routes/user.js
 const express = require('express');
-
 const router = express.Router();
 const zod = require("zod");
 const { User, Account } = require("../db");
 const jwt = require("jsonwebtoken");
 const { authMiddleware } = require("../middleware");
+const bcrypt = require("bcrypt");
 
 const signupBody = zod.object({
     username: zod.string().email(),
@@ -32,9 +32,12 @@ router.post("/signup", async (req, res) => {
         })
     }
 
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hashSync(req.body.password, salt);
+
     const user = await User.create({
         username: req.body.username,
-        password: req.body.password,
+        password: hashedPassword,
         firstName: req.body.firstName,
         lastName: req.body.lastName,
     })
@@ -65,16 +68,24 @@ router.post("/signin", async (req, res) => {
     const { success } = signinBody.safeParse(req.body)
     if (!success) {
         return res.status(411).json({
-            message: "Email already taken / Incorrect inputs"
+            message: " Incorrect inputs"
         })
     }
 
     const user = await User.findOne({
         username: req.body.username,
-        password: req.body.password
     });
 
+    if (!user) {
+        return res.status(404).json("User not found!");
+    }
+
     if (user) {
+        const match = await bcrypt.compare(req.body.password, user.password);
+        if (!match) {
+            return res.status(401).json("Wrong credentials!");
+        }
+        
         const token = jwt.sign({
             userId: user._id
         }, process.env.JWT_SECRET);
@@ -144,7 +155,7 @@ router.get("/getUser", authMiddleware, async (req, res) => {
         _id: req.userId
     });
 
-    res.json({ firstName : user.firstName });
+    res.json({ firstName: user.firstName });
 });
 
 module.exports = router;
