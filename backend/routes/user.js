@@ -85,7 +85,7 @@ router.post("/signin", async (req, res) => {
         if (!match) {
             return res.status(401).json("Wrong credentials!");
         }
-        
+
         const token = jwt.sign({
             userId: user._id
         }, process.env.JWT_SECRET);
