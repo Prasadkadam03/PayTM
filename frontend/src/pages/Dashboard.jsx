@@ -15,7 +15,7 @@ export const Dashboard = () => {
     useEffect(() => {
         const userToken = localStorage.getItem("token");
     
-          axios.get("http://localhost:3000/api/v1/account/balance", {
+          axios.get(import.meta.env.VITE_SERVER_URL + "/api/v1/account/balance", {
               headers: {
                 authorization: "Bearer " + userToken,
               },

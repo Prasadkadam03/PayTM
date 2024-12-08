@@ -42,7 +42,7 @@ export const Signup = () => {
                 
                 <div>
                     <Button onPress={async () => {
-                        const reasponse = await axios.post("http://localhost:3000/api/v1/user/signup" , {
+                        const reasponse = await axios.post( import.meta.env.VITE_SERVER_URL + "/api/v1/user/signup" , {
                             firstName,
                             lastName,
                             username,

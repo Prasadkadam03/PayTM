@@ -9,7 +9,7 @@ export const AppBar = () => {
     useEffect(() => {
         const userToken = localStorage.getItem("token");
 
-        axios.get("http://localhost:3000/api/v1/user/getUser", {
+        axios.get(import.meta.env.VITE_SERVER_URL + "/api/v1/user/getUser", {
             headers: {
                 authorization: "Bearer " + userToken,
             },
@@ -32,10 +32,10 @@ export const AppBar = () => {
                 <div className="font-medium  text-2xl pr-2 pt-2">
                     Hello {firstName}
                 </div>
-                <div>
-                    <Button onPress={e => {
-
-                    }} label={"SignOut"} />
+                <div className="rounded-full h-12 w-12 bg-cyan-200 flex justify-center mt-1 mr-2">
+                    <div className="flex flex-col justify-center h-full text-xl">
+                        {firstName[0]?.toUpperCase()}
+                    </div>
                 </div>
             </div>
         </div>
