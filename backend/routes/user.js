@@ -146,8 +146,9 @@ router.get("/bulk",authMiddleware , async (req, res) => {
         }]
     })
     const filteredUsers = users.filter(user => user._id.toString() !== thisUser._id.toString());
+    console.log(filteredUsers);
     res.json({
-        user: filteredUsers.map(user => ({
+        users: filteredUsers.map(user => ({
             username: user.username,
             firstName: user.firstName,
             lastName: user.lastName,

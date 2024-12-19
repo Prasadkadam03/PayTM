@@ -7,9 +7,8 @@ import { useNavigate } from "react-router-dom";
 
 
 export const Dashboard = () => {
-
-    const [balance, setBalance] = useState(null);
     const navigate = useNavigate();
+    const [balance, setBalance] = useState(null);
    
 
     useEffect(() => {
@@ -24,7 +23,7 @@ export const Dashboard = () => {
               setBalance(response.data.balance);
             }).catch((err)=> {
               console.log("error="+err);
-              
+              navigate("/signin");
             })
         
       }, []);

@@ -8,12 +8,22 @@ export const Users = () => {
     const [users, setUsers] = useState([]);
     const [filter , setFilter] = useState("");
 
+    const userToken = localStorage.getItem("token");
+
+
     useEffect(() => {
-        axios.get(import.meta.env.VITE_SERVER_URL + "/api/v1/user/bulk?filter=" + filter )
+        axios.get(import.meta.env.VITE_SERVER_URL + "/api/v1/user/bulk?filter=" + filter , {
+            headers: {
+              authorization: "Bearer " + userToken,
+            },
+          })
             .then(response => {
                 setUsers(response.data.user || [])
                 console.log("API " + response.data.user);
-            })
+            }).catch((err)=> {
+                console.log("error="+err);
+                navigator
+              })
     }, [filter])
 
     return <>
