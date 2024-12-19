@@ -18,7 +18,7 @@ export const Users = () => {
             },
           })
             .then(response => {
-                setUsers(response.data.user || [])
+                setUsers(response.data.users || [])
                 console.log("API " + response.data.user);
             }).catch((err)=> {
                 console.log("error="+err);
