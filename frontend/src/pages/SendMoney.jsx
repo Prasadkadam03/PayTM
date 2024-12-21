@@ -46,9 +46,7 @@ export const SendMoney = () => {
                     <input
                         onChange={(e) => {
                             const value = e.target.value;
-                            if (value >= 0 || value === "") {
-                                setAmount(value);
-                            }
+                            setAmount(value);
                         }}
                         placeholder="Enter Amount"
                         type="number"
