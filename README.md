@@ -12,7 +12,7 @@ Here are some screenshots of the application:
 <img src="ss/SignUp.png" alt="SignUP Page" width="70%">
 
 ### DashBoard
-<img src="ss/DashBoard.png" alt="DashBoard" width="70%">
+<img src="ss/Dashboard.png" alt="DashBoard" width="70%">
 
 ### Transaction Page
 <img src="ss/SendMoney.png" alt="Transaction Page" width="70%">
