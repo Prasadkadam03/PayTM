@@ -32,22 +32,41 @@ export const SendMoney = () => {
                         {fname} {lname}
                     </div>
                 </div>
-                <InputBox onChange={(e) => {
-                    setAmount(e.target.value);
-                }} label={"Amount ( in ₹ )"} placeholder={"Enter Amount "} />
 
-                <Button onPress={()=> {
-                    axios.post(import.meta.env.VITE_SERVER_URL + "/api/v1/account/transfer" , {
-                        to : id,
-                        amount : Amount,
-                    },{
+
+                <div className="p-1 ">
+                    <div className=" flex flex-start block p-1.5 text-sm font-medium ">
+                        Amount ( in ₹ )
+                    </div>
+                    <input
+                        onChange={(e) => {
+                            const value = e.target.value;
+                            if (value >= 0 || value === "") { 
+                                setAmount(value);
+                            }
+                        }}
+                        placeholder="Enter Amount"
+                        type="number"
+                        min="0"
+                        step="0.01" 
+                        className="bg-slate-50 border border-slate-300 text-bold text-medium rounded-lg w-full p-2"
+                        required
+                    />
+
+                </div>
+
+                <Button onPress={() => {
+                    axios.post(import.meta.env.VITE_SERVER_URL + "/api/v1/account/transfer", {
+                        to: id,
+                        amount: Amount,
+                    }, {
                         headers: {
                             Authorization: "Bearer " + localStorage.getItem("token")
                         }
                     })
-                    .then((response) => {
-                        alert("transfer successfull")
-                    })
+                        .then((response) => {
+                            alert("transfer successfull")
+                        })
                 }} label={"Initiate transfer"} />
             </div>
         </div>
