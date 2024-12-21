@@ -2,10 +2,11 @@ import { Heading } from "../Components/Heading"
 import {SubHeading} from "../Components/SubHeading"
 import {InputBox} from "../Components/InputBox"
 import { Button } from "../Components/Button"
-import { ButtonWarning } from "../Components/BottomWarning"
+import { BottomWarning } from "../Components/BottomWarning"
 import { useState } from "react"
 import axios from "axios"
 import { useNavigate } from "react-router-dom"
+import { toast } from "react-toastify"
 
 
 export const Signin = () => {
@@ -32,17 +33,25 @@ export const Signin = () => {
                
                 <div>
                     <Button onPress={ async () => {
-                        const response = await axios.post(import.meta.env.VITE_SERVER_URL + "/api/v1/user/signin", {
+                        const response =  axios.post(import.meta.env.VITE_SERVER_URL + "/api/v1/user/signin", {
                             username,
                             password
+                        }).then((response) => {
+                            localStorage.setItem("token", response.data.token);
                         });
 
-                        localStorage.setItem("token", response.data.token)
+                        await toast.promise(response, {
+                            pending: "Signing in...",
+                            success: "Signed in successfully..... \nWelcome to dashboard",
+                            error: "Invalid credentials \nPlease try again"
+                        })
+                        
+                        
                         navigate("/dashboard");
 
                     }} label={"Sign In"} />
                 </div>
-                <ButtonWarning label={"Dont have an account? "} page={"Signup"} to={"/Signup"}  ></ButtonWarning>
+                <BottomWarning label={"Dont have an account? "} page={"Signup"} to={"/Signup"} />
             </div>
         </div>
     </div>

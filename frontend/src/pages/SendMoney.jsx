@@ -4,6 +4,8 @@ import { Heading } from "../Components/Heading"
 import { InputBox } from "../Components/InputBox"
 import { useState } from "react"
 import axios from "axios"
+import { toast } from 'react-toastify';
+import { useNavigate } from "react-router-dom"
 
 export const SendMoney = () => {
 
@@ -13,7 +15,10 @@ export const SendMoney = () => {
     const fname = searchParams.get("fname");
     const lname = searchParams.get("lname");
 
-    const [Amount, setAmount] = useState("");
+    const [amount, setAmount] = useState("");
+
+    const navigate = useNavigate();
+
 
 
     return <div className="bg-zinc-300 h-screen flex justify-center">
@@ -41,14 +46,14 @@ export const SendMoney = () => {
                     <input
                         onChange={(e) => {
                             const value = e.target.value;
-                            if (value >= 0 || value === "") { 
+                            if (value >= 0 || value === "") {
                                 setAmount(value);
                             }
                         }}
                         placeholder="Enter Amount"
                         type="number"
                         min="0"
-                        step="0.01" 
+                        step="0.01"
                         className="bg-slate-50 border border-slate-300 text-bold text-medium rounded-lg w-full p-2"
                         required
                     />
@@ -56,18 +61,26 @@ export const SendMoney = () => {
                 </div>
 
                 <Button onPress={() => {
-                    axios.post(import.meta.env.VITE_SERVER_URL + "/api/v1/account/transfer", {
-                        to: id,
-                        amount: Amount,
-                    }, {
-                        headers: {
-                            Authorization: "Bearer " + localStorage.getItem("token")
-                        }
-                    })
-                        .then((response) => {
-                            alert("transfer successfull")
-                        })
+                    const response = axios.post(
+                        `${import.meta.env.VITE_SERVER_URL}/api/v1/account/transfer`,
+                        { to: id, amount },
+                        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+                    );
+
+                    toast.promise(
+                        response,
+                        {
+                            pending: "Initiating transfer...",
+                            success: "Transfer initiated successfully",
+                            error: "Failed to initiate transfer",
+                        },
+
+                    )
+
                 }} label={"Initiate transfer"} />
+                <Button onPress={() => {
+                    navigate("/dashboard");
+                }} label={"Dashboard"} />
             </div>
         </div>
     </div>
