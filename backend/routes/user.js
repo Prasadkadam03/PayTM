@@ -164,4 +164,11 @@ router.get("/getUser", authMiddleware, async (req, res) => {
     res.json({ firstName: user.firstName });
 });
 
+router.get("/cron", async (req, res) => {
+
+    res.json({
+        msg : "successfull"
+    });
+});
+
 module.exports = router;
