@@ -25,12 +25,20 @@ router.post("/transfer", authMiddleware, async (req, res) => {
     // Fetch the accounts within the transaction
     const account = await Account.findOne({ userId: req.userId }).session(session);
 
-    if (!account || account.balance < amount) {
+    if(amount <= 0) {await session.abortTransaction();
+        return res.status(400).json({
+            message: "Invalid amount"
+        });
+    }
+
+    if (!account || account.balance < amount ) {
         await session.abortTransaction();
         return res.status(400).json({
             message: "Insufficient balance"
         });
     }
+
+
 
     const toAccount = await Account.findOne({ userId: to }).session(session);
 
