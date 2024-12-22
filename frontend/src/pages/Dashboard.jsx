@@ -28,9 +28,9 @@ export const Dashboard = () => {
         
       }, []);
 
-    return <div className="bg-zinc-200 min-h-screen h-full sm:px-8 px-2">
+    return <div className="bg-zinc-200 min-h-screen h-full sm:px-8 px-3">
         <AppBar />
-        <div className="p-8">
+        <div className="sm:px-8 px-4">
             <Balance label={balance} />
             <Users />
         </div>
