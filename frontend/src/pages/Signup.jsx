@@ -18,9 +18,9 @@ export const Signup = () => {
     const navigate = useNavigate();
 
     return <div className="bg-zinc-300 h-screen flex justify-center">
-        <div className="flex flex-col  justify-center">
+        <div className="flex flex-col justify-center p-4">
 
-            <div className=" rounded-lg bg-white w-110 text-center shadow-2xl shadow-gray-900  hover:shadow-cyan-700/100  p-10">
+            <div className="rounded-lg bg-white w-full text-center shadow-2xl shadow-gray-900 hover:shadow-cyan-700/100 p-10">
                 <Heading label={"SIGN UP"} />
 
                 <SubHeading label={"Enter your Information to Create your account"} />
