@@ -60,23 +60,29 @@ export const SendMoney = () => {
 
                 </div>
 
-                <Button onPress={() => {
-                    const response = axios.post(
+                <Button onPress={ async() => {
+                    const transferPromise = axios.post(
                         `${import.meta.env.VITE_SERVER_URL}/api/v1/account/transfer`,
                         { to: id, amount },
                         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
                     );
 
                     toast.promise(
-                        response,
+                        transferPromise,
                         {
                             pending: "Initiating transfer...",
                             success: "Transfer initiated successfully",
-                            error: "Failed to initiate transfer",
                         },
 
                     )
 
+
+                    try {
+                        await transferPromise;
+                    } catch (error) {
+                        console.error("Transfer failed", error);
+                        toast.error(`Failed to initiate transfer: ${error.response?.data?.message || error.message}`);
+                    }
                 }} label={"Initiate transfer"} />
                 <Button onPress={() => {
                     navigate("/dashboard");
