@@ -2,28 +2,32 @@ import { useEffect, useState } from "react"
 import { Button } from "./Button"
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { ThreeDots } from "react-loader-spinner";
+
 
 export const Users = () => {
 
     const [users, setUsers] = useState([]);
-    const [filter , setFilter] = useState("");
+    const [filter, setFilter] = useState("");
+    const [loading, setLoading] = useState(true);
 
     const userToken = localStorage.getItem("token");
 
 
     useEffect(() => {
-        axios.get(import.meta.env.VITE_SERVER_URL + "/api/v1/user/bulk?filter=" + filter , {
+        axios.get(import.meta.env.VITE_SERVER_URL + "/api/v1/user/bulk?filter=" + filter, {
             headers: {
-              authorization: "Bearer " + userToken,
+                authorization: "Bearer " + userToken,
             },
-          })
+        })
             .then(response => {
                 setUsers(response.data.users || [])
                 console.log("API " + response.data.user);
-            }).catch((err)=> {
-                console.log("error="+err);
+                setLoading(false);
+            }).catch((err) => {
+                console.log("error=" + err);
                 navigator
-              })
+            })
     }, [filter])
 
     return <>
@@ -36,7 +40,19 @@ export const Users = () => {
             }} type="text" placeholder="Search users..." className="w-full px-2 py-1 border rounded border-slate-200"></input>
         </div>
         <div>
-            {users.map(user => <User key={user._id} user={user} />)}
+            {loading ? <div className="flex justify-center col-center py-100">
+                <ThreeDots
+                    visible={true}
+                    height="150"
+                    width="150"
+                    color="#06b6d4"
+                    radius="8"
+                    ariaLabel="three-dots-loading"
+                    wrapperStyle={{}}
+                    wrapperClass=""
+                /> 
+            </div> : <div> {users.map(user => <User key={user._id} user={user} />)} </div>}
+
         </div>
     </>
 }
@@ -59,7 +75,7 @@ function User({ user }) {
             </div>
 
             <div >
-                <Button onPress={(e)  => {
+                <Button onPress={(e) => {
                     navigate("/send?id=" + user._id + "&fname=" + user.firstName + "&lname=" + user.lastName);
                 }} label={"Send Money"} />
             </div>
