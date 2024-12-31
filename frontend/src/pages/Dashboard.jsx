@@ -34,20 +34,17 @@ export const Dashboard = () => {
   return <div className="bg-zinc-200 min-h-screen h-full sm:px-8 px-3">
     <AppBar />
     <div className="sm:px-8 px-4">
-    <div className="font-bold  sm:text-2xl text-xl p-1 flex col-center justify-start" >
-      <div >Your Balance :    </div>
-      {loading ? <div className="px-10"> <ThreeDots
-  visible={true}
-  height="40"
-  width="50"
-  color="#06b6d4"
-  radius="8"
-  ariaLabel="three-dots-loading"
-  wrapperStyle={{}}
-  wrapperClass=""
-  /></div> : <Balance label={balance} />}
-      </div>
+      <div className="font-bold  sm:text-2xl text-xl p-1 flex col-center justify-start" >
+        <div >Your Balance :    </div>
+        
+        {loading ? <div>
+          <div class="pl-2 font-semibold animate-pulse">
+            <div class="h-7 bg-cyan-200 rounded w-16"></div>
+          </div>
+        </div> : <Balance label={balance} />}
       
+      </div>
+
       <Users />
     </div>
   </div>

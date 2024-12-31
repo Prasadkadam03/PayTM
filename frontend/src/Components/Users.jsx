@@ -40,17 +40,91 @@ export const Users = () => {
             }} type="text" placeholder="Search users..." className="w-full px-2 py-1 border rounded border-slate-200"></input>
         </div>
         <div>
-            {loading ? <div className="flex justify-center col-center py-100">
-                <ThreeDots
-                    visible={true}
-                    height="150"
-                    width="150"
-                    color="#06b6d4"
-                    radius="8"
-                    ariaLabel="three-dots-loading"
-                    wrapperStyle={{}}
-                    wrapperClass=""
-                /> 
+            {loading ? <div>
+                <div class="py-1 animate-pulse">
+                <div class="flex rounded-lg justify-between px-4 bg-white shadow-md">
+                    <div class="flex">
+                        <div class="rounded-full h-12 w-12 bg-gray-200 mt-1 mr-2"></div>
+                        <div class="flex flex-col justify-center h-ful">
+                            <div class="bg-gray-200 rounded w-24 h-4"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="bg-gray-200 rounded w-24 h-8"></div>
+                    </div>
+                </div>
+            </div> 
+            <div class="py-1 animate-pulse">
+                <div class="flex rounded-lg justify-between px-4 bg-white shadow-md">
+                    <div class="flex">
+                        <div class="rounded-full h-12 w-12 bg-gray-200 mt-1 mr-2"></div>
+                        <div class="flex flex-col justify-center h-ful">
+                            <div class="bg-gray-200 rounded w-24 h-4"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="bg-gray-200 rounded w-24 h-8"></div>
+                    </div>
+                </div>
+            </div> 
+            <div class="py-1 animate-pulse">
+                <div class="flex rounded-lg justify-between px-4 bg-white shadow-md">
+                    <div class="flex">
+                        <div class="rounded-full h-12 w-12 bg-gray-200 mt-1 mr-2"></div>
+                        <div class="flex flex-col justify-center h-ful">
+                            <div class="bg-gray-200 rounded w-24 h-4"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="bg-gray-200 rounded w-24 h-8"></div>
+                    </div>
+                </div>
+            </div> 
+            <div class="py-1 animate-pulse">
+                <div class="flex rounded-lg justify-between px-4 bg-white shadow-md">
+                    <div class="flex">
+                        <div class="rounded-full h-12 w-12 bg-gray-200 mt-1 mr-2"></div>
+                        <div class="flex flex-col justify-center h-ful">
+                            <div class="bg-gray-200 rounded w-24 h-4"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="bg-gray-200 rounded w-24 h-8"></div>
+                    </div>
+                </div>
+            </div> 
+            <div class="py-1 animate-pulse">
+                <div class="flex rounded-lg justify-between px-4 bg-white shadow-md">
+                    <div class="flex">
+                        <div class="rounded-full h-12 w-12 bg-gray-200 mt-1 mr-2"></div>
+                        <div class="flex flex-col justify-center h-ful">
+                            <div class="bg-gray-200 rounded w-24 h-4"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="bg-gray-200 rounded w-24 h-8"></div>
+                    </div>
+                </div>
+            </div> 
+            <div class="py-1 animate-pulse">
+                <div class="flex rounded-lg justify-between px-4 bg-white shadow-md">
+                    <div class="flex">
+                        <div class="rounded-full h-12 w-12 py-1 bg-gray-200 mt-1 mr-2"></div>
+                        <div class="flex flex-col justify-center h-ful">
+                            <div class="bg-gray-200 rounded w-24 h-4"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="bg-gray-200 rounded w-24 h-8"></div>
+                    </div>
+                </div>
+            </div> 
             </div> : <div> {users.map(user => <User key={user._id} user={user} />)} </div>}
 
         </div>
