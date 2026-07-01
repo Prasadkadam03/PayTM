@@ -13,7 +13,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   return (
-    <div className="font-mono">
+    <div className="font-sans">
       <BrowserRouter>
         <Routes>
           <Route path="/signup" element={<Signup />} />
