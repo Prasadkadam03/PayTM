@@ -1,11 +1,10 @@
 import { Link } from "react-router-dom"
 
 export const BottomWarning = ({ label, page, to }) => {
-    return <div className="text-sm text-slate-600 pb-1.5" >
+    return <p className="mt-6 text-center text-sm text-slate-500">
         {label}
-        <Link className="text-slate-650 underline" to={to}>
+        <Link className="font-medium text-brand hover:underline" to={to}>
             {page}
         </Link>
-    </div>
-
+    </p>
 }
