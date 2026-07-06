@@ -1,8 +1,9 @@
 import { Heading } from "../Components/Heading"
-import {SubHeading} from "../Components/SubHeading"
-import {InputBox} from "../Components/InputBox"
+import { SubHeading } from "../Components/SubHeading"
+import { InputBox } from "../Components/InputBox"
 import { Button } from "../Components/Button"
 import { BottomWarning } from "../Components/BottomWarning"
+import { AuthCard } from "../Components/AuthCard"
 import { useState } from "react"
 import axios from "axios"
 import { useNavigate } from "react-router-dom"
@@ -10,49 +11,44 @@ import { toast } from "react-toastify"
 
 
 export const Signin = () => {
-    
-    const [username , setUserName] = useState("");
-    const [password , setPassword] = useState("");
+
+    const [username, setUserName] = useState("");
+    const [password, setPassword] = useState("");
+    const [submitting, setSubmitting] = useState(false);
 
     const navigate = useNavigate();
 
-    return <div className="bg-zinc-300 h-screen flex justify-center ">
-        <div className="flex flex-col  justify-center p-4">
+    const onSubmit = async (e) => {
+        e.preventDefault();
+        setSubmitting(true);
+        try {
+            const response = await toast.promise(
+                axios.post(import.meta.env.VITE_SERVER_URL + "/api/v1/user/signin", { username, password }),
+                {
+                    pending: "Signing in...",
+                    success: "Welcome back!",
+                    error: "Invalid credentials, please try again",
+                }
+            );
+            localStorage.setItem("token", response.data.token);
+            navigate("/dashboard");
+        } catch {
+            setSubmitting(false);
+        }
+    };
 
-            <div className=" rounded-lg bg-white w-full  text-center shadow-2xl shadow-gray-900  hover:shadow-cyan-700/100  p-10 ">
-                <Heading label={"SIGN IN"} />
-                <SubHeading label={"Enter your credentials to Access your account"} />
+    return <AuthCard>
+        <form onSubmit={onSubmit}>
+            <Heading label={"Sign in"} />
+            <SubHeading label={"Enter your credentials to access your account"} />
 
-                <InputBox onChange={ e => {
-                    setUserName(e.target.value);
-                }} label={"Email"} placeholder="Prasad@gmail.com" />
-                
-                <InputBox onChange={e => {
-                    setPassword(e.target.value);
-                }} label={"Password"} placeholder="******" />
-               
-                <div>
-                    <Button onPress={ async () => {
-                        const response =  axios.post(import.meta.env.VITE_SERVER_URL + "/api/v1/user/signin", {
-                            username,
-                            password
-                        }).then((response) => {
-                            localStorage.setItem("token", response.data.token);
-                        });
+            <InputBox onChange={e => setUserName(e.target.value)} label={"Email"} placeholder="prasad@gmail.com" type="email" autoComplete="email" />
+            <InputBox onChange={e => setPassword(e.target.value)} label={"Password"} placeholder="••••••••" type="password" autoComplete="current-password" />
 
-                        await toast.promise(response, {
-                            pending: "Signing in...",
-                            success: "Signed in successfully..... \nWelcome to dashboard",
-                            error: "Invalid credentials \nPlease try again"
-                        })
-                        
-                        
-                        navigate("/dashboard");
-
-                    }} label={"Sign In"} />
-                </div>
-                <BottomWarning label={"Dont have an account? "} page={"Signup"} to={"/Signup"} />
+            <div className="mt-6">
+                <Button type="submit" label={submitting ? "Signing in..." : "Sign in"} disabled={submitting} />
             </div>
-        </div>
-    </div>
-} 
+        </form>
+        <BottomWarning label={"Don't have an account? "} page={"Sign up"} to={"/signup"} />
+    </AuthCard>
+}
