@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react"
-import { Button } from "./Button"
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { ThreeDots } from "react-loader-spinner";
 
 
 export const Users = () => {
@@ -22,137 +20,58 @@ export const Users = () => {
         })
             .then(response => {
                 setUsers(response.data.users || [])
-                console.log("API " + response.data.user);
                 setLoading(false);
             }).catch((err) => {
                 console.log("error=" + err);
-                navigator
             })
     }, [filter])
 
-    return <>
-        <div className="font-bold mt-6 text-lg">
-            Users
+    return <section className="mt-8 rounded-2xl border border-slate-200 bg-white">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 p-4 sm:p-5">
+            <h2 className="text-base font-semibold">Send money to</h2>
+            <input
+                onChange={e => setFilter(e.target.value)}
+                type="search"
+                placeholder="Search people"
+                aria-label="Search people"
+                className="w-full sm:w-60 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm outline-none transition focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15"
+            />
         </div>
-        <div className="my-2">
-            <input onChange={e => {
-                setFilter(e.target.value)
-            }} type="text" placeholder="Search users..." className="w-full px-2 py-1 border rounded border-slate-200"></input>
-        </div>
-        <div>
-            {loading ? <div>
-                <div class="py-1 animate-pulse">
-                <div class="flex rounded-lg justify-between px-4 bg-white shadow-md">
-                    <div class="flex">
-                        <div class="rounded-full h-12 w-12 bg-gray-200 mt-1 mr-2"></div>
-                        <div class="flex flex-col justify-center h-ful">
-                            <div class="bg-gray-200 rounded w-24 h-4"></div>
-                        </div>
-                    </div>
 
-                    <div>
-                        <div class="bg-gray-200 rounded w-24 h-8"></div>
-                    </div>
-                </div>
-            </div> 
-            <div class="py-1 animate-pulse">
-                <div class="flex rounded-lg justify-between px-4 bg-white shadow-md">
-                    <div class="flex">
-                        <div class="rounded-full h-12 w-12 bg-gray-200 mt-1 mr-2"></div>
-                        <div class="flex flex-col justify-center h-ful">
-                            <div class="bg-gray-200 rounded w-24 h-4"></div>
-                        </div>
-                    </div>
+        <ul className="divide-y divide-slate-100">
+            {loading
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <li key={i} className="flex items-center gap-3 px-4 sm:px-5 py-4 animate-pulse">
+                        <div className="h-10 w-10 rounded-full bg-slate-100" />
+                        <div className="h-3 w-40 rounded bg-slate-100" />
+                    </li>
+                ))
+                : users.map(user => <User key={user._id} user={user} />)}
+        </ul>
 
-                    <div>
-                        <div class="bg-gray-200 rounded w-24 h-8"></div>
-                    </div>
-                </div>
-            </div> 
-            <div class="py-1 animate-pulse">
-                <div class="flex rounded-lg justify-between px-4 bg-white shadow-md">
-                    <div class="flex">
-                        <div class="rounded-full h-12 w-12 bg-gray-200 mt-1 mr-2"></div>
-                        <div class="flex flex-col justify-center h-ful">
-                            <div class="bg-gray-200 rounded w-24 h-4"></div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div class="bg-gray-200 rounded w-24 h-8"></div>
-                    </div>
-                </div>
-            </div> 
-            <div class="py-1 animate-pulse">
-                <div class="flex rounded-lg justify-between px-4 bg-white shadow-md">
-                    <div class="flex">
-                        <div class="rounded-full h-12 w-12 bg-gray-200 mt-1 mr-2"></div>
-                        <div class="flex flex-col justify-center h-ful">
-                            <div class="bg-gray-200 rounded w-24 h-4"></div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div class="bg-gray-200 rounded w-24 h-8"></div>
-                    </div>
-                </div>
-            </div> 
-            <div class="py-1 animate-pulse">
-                <div class="flex rounded-lg justify-between px-4 bg-white shadow-md">
-                    <div class="flex">
-                        <div class="rounded-full h-12 w-12 bg-gray-200 mt-1 mr-2"></div>
-                        <div class="flex flex-col justify-center h-ful">
-                            <div class="bg-gray-200 rounded w-24 h-4"></div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div class="bg-gray-200 rounded w-24 h-8"></div>
-                    </div>
-                </div>
-            </div> 
-            <div class="py-1 animate-pulse">
-                <div class="flex rounded-lg justify-between px-4 bg-white shadow-md">
-                    <div class="flex">
-                        <div class="rounded-full h-12 w-12 py-1 bg-gray-200 mt-1 mr-2"></div>
-                        <div class="flex flex-col justify-center h-ful">
-                            <div class="bg-gray-200 rounded w-24 h-4"></div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div class="bg-gray-200 rounded w-24 h-8"></div>
-                    </div>
-                </div>
-            </div> 
-            </div> : <div> {users.map(user => <User key={user._id} user={user} />)} </div>}
-
-        </div>
-    </>
+        {!loading && users.length === 0 && (
+            <p className="px-5 py-10 text-center text-sm text-slate-500">No users found.</p>
+        )}
+    </section>
 }
 
 function User({ user }) {
     const navigate = useNavigate();
-    return <div className="py-1">
-        <div className="flex rounded-lg justify-between px-4 bg-white shadow-md hover:shadow-cyan-400/50">
-            <div className="flex">
-                <div className="rounded-full h-12 w-12 bg-slate-200 flex justify-center mt-1 mr-2">
-                    <div className="flex flex-col justify-center h-full text-xl">
-                        {user.firstName[0]}
-                    </div>
-                </div>
-                <div className="flex flex-col justify-center h-ful">
-                    <div>
-                        {user.firstName} {user.lastName}
-                    </div>
-                </div>
-            </div>
+    const params = new URLSearchParams({ id: user._id, fname: user.firstName, lname: user.lastName });
 
-            <div >
-                <Button onPress={(e) => {
-                    navigate("/send?id=" + user._id + "&fname=" + user.firstName + "&lname=" + user.lastName);
-                }} label={"Send Money"} />
+    return <li className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 hover:bg-slate-50">
+        <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-light text-sm font-semibold text-brand-navy">
+                {user.firstName[0]?.toUpperCase()}
             </div>
+            <span className="truncate text-sm font-medium">{user.firstName} {user.lastName}</span>
         </div>
-    </div>
+
+        <button
+            onClick={() => navigate("/send?" + params.toString())}
+            className="shrink-0 rounded-lg bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-navy transition-colors"
+        >
+            Send
+        </button>
+    </li>
 }
