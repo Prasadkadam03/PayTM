@@ -109,16 +109,18 @@ const updateBody = zod.object({
 })
 
 router.put("/", authMiddleware, async (req, res) => {
-    const { success } = updateBody.safeParse(req.body)
+    const { success, data } = updateBody.safeParse(req.body)
     if (!success) {
-        res.status(411).json({
+        return res.status(411).json({
             message: "Error while updating information"
         })
     }
 
-    await User.updateOne(req.body, {
-        id: req.userId
-    })
+    if (data.password) {
+        data.password = await bcrypt.hash(data.password, 10);
+    }
+
+    await User.updateOne({ _id: req.userId }, data)
 
     res.json({
         message: "Updated successfully"
