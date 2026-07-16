@@ -3,6 +3,7 @@ const express = require('express');
 const { authMiddleware } = require('../middleware');
 const { Account } = require('../db');
 const { default: mongoose } = require('mongoose');
+const zod = require("zod");
 
 const router = express.Router();
 
@@ -16,20 +17,26 @@ router.get("/balance", authMiddleware, async (req, res) => {
     })
 });
 
+const transferBody = zod.object({
+    to: zod.string().regex(/^[a-f\d]{24}$/i, "Invalid account"),
+    amount: zod.number().positive("Invalid amount").finite()
+})
+
 router.post("/transfer", authMiddleware, async (req, res) => {
+    const parsed = transferBody.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({
+            message: parsed.error.issues[0].message
+        });
+    }
+    const { amount, to } = parsed.data;
+
     const session = await mongoose.startSession();
 
     session.startTransaction();
-    const { amount, to } = req.body;
 
     // Fetch the accounts within the transaction
     const account = await Account.findOne({ userId: req.userId }).session(session);
-
-    if(amount <= 0) {await session.abortTransaction();
-        return res.status(400).json({
-            message: "Invalid amount"
-        });
-    }
 
     if (!account || account.balance < amount ) {
         await session.abortTransaction();
