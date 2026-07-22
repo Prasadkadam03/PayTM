@@ -127,30 +127,31 @@ router.put("/", authMiddleware, async (req, res) => {
     })
 })
 
-router.get("/bulk",authMiddleware , async (req, res) => {
-    const filter = req.query.filter || "";
+const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-    const thisUser = await User.findOne({
-        _id: req.userId
-    });
+router.get("/bulk", authMiddleware, async (req, res) => {
+    const filter = escapeRegex(String(req.query.filter || "").trim().slice(0, 50));
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
 
     const users = await User.find({
+        _id: { $ne: req.userId },
         $or: [{
             firstName: {
-                "$regex": filter ,
-                "$options" : "i"
+                "$regex": filter,
+                "$options": "i"
             }
         }, {
             lastName: {
-                "$regex": filter ,
-                "$options" : "i"
+                "$regex": filter,
+                "$options": "i"
             }
         }]
     })
-    const filteredUsers = users.filter(user => user._id.toString() !== thisUser._id.toString());
+        .select("firstName lastName")
+        .limit(limit)
+
     res.json({
-        users: filteredUsers.map(user => ({
-            username: user.username,
+        users: users.map(user => ({
             firstName: user.firstName,
             lastName: user.lastName,
             _id: user._id
