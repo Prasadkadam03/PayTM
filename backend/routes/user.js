@@ -76,29 +76,19 @@ router.post("/signin", async (req, res) => {
         username: req.body.username,
     });
 
-    if (!user) {
-        return res.status(404).json("User not found!");
+    const match = user && await bcrypt.compare(req.body.password, user.password);
+    if (!match) {
+        return res.status(401).json({
+            message: "Invalid email or password"
+        });
     }
 
-    if (user) {
-        const match = await bcrypt.compare(req.body.password, user.password);
-        if (!match) {
-            return res.status(401).json("Wrong credentials!");
-        }
+    const token = jwt.sign({
+        userId: user._id
+    }, process.env.JWT_SECRET);
 
-        const token = jwt.sign({
-            userId: user._id
-        }, process.env.JWT_SECRET);
-
-        res.json({
-            token: token
-        })
-        return;
-    }
-
-
-    res.status(411).json({
-        message: "Error while logging in"
+    res.json({
+        token: token
     })
 })
 
