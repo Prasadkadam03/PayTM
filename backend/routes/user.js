@@ -8,22 +8,27 @@ const { authMiddleware } = require("../middleware");
 const bcrypt = require("bcrypt");
 
 const signupBody = zod.object({
-    username: zod.string().email(),
-    firstName: zod.string(),
-    lastName: zod.string(),
+    username: zod.string().trim().toLowerCase().email("Enter a valid email"),
+    firstName: zod.string().trim().min(1, "First name is required").max(50),
+    lastName: zod.string().trim().min(1, "Last name is required").max(50),
     password: zod.string()
+        .min(8, "Password must be at least 8 characters")
+        .max(72, "Password is too long")
+        .regex(/[a-zA-Z]/, "Password must contain a letter")
+        .regex(/[0-9]/, "Password must contain a number")
 })
 
 router.post("/signup", async (req, res) => {
-    const { success } = signupBody.safeParse(req.body)
-    if (!success) {
+    const parsed = signupBody.safeParse(req.body)
+    if (!parsed.success) {
         return res.status(411).json({
-            message: "Email already taken / Incorrect inputs"
+            message: parsed.error.issues[0].message
         })
     }
+    const { username, firstName, lastName, password } = parsed.data;
 
     const existingUser = await User.findOne({
-        username: req.body.username
+        username
     })
 
     if (existingUser) {
@@ -32,14 +37,13 @@ router.post("/signup", async (req, res) => {
         })
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hashSync(req.body.password, salt);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     const user = await User.create({
-        username: req.body.username,
+        username,
         password: hashedPassword,
-        firstName: req.body.firstName,
-        lastName: req.body.lastName,
+        firstName,
+        lastName,
     })
     const userId = user._id;
 
