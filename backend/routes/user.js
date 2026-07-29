@@ -6,6 +6,7 @@ const { User, Account } = require("../db");
 const jwt = require("jsonwebtoken");
 const { authMiddleware } = require("../middleware");
 const bcrypt = require("bcrypt");
+const mongoose = require("mongoose");
 
 const signupBody = zod.object({
     username: zod.string().trim().toLowerCase().email("Enter a valid email"),
@@ -39,18 +40,27 @@ router.post("/signup", async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    const user = await User.create({
-        username,
-        password: hashedPassword,
-        firstName,
-        lastName,
-    })
-    const userId = user._id;
+    // user and account are created together so we never end up with a user without a wallet
+    const session = await mongoose.startSession();
+    let userId;
+    try {
+        await session.withTransaction(async () => {
+            const [user] = await User.create([{
+                username,
+                password: hashedPassword,
+                firstName,
+                lastName,
+            }], { session })
+            userId = user._id;
 
-    await Account.create({
-        userId,
-        balance: 1000 // every user gets 1000 as signup.. we have lot of money 🥱 
-    })
+            await Account.create([{
+                userId,
+                balance: 1000 // every user gets 1000 as signup.. we have lot of money 🥱
+            }], { session })
+        });
+    } finally {
+        await session.endSession();
+    }
 
     const token = jwt.sign({
         userId
