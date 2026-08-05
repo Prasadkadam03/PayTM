@@ -11,8 +11,29 @@ dotEnv.config();
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect(process.env.DBURL);
-
 app.use("/api/v1", rootRouter);
 
-app.listen(process.env.PORT);
+app.use((req, res) => {
+    res.status(404).json({ message: "Not found" });
+});
+
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+    if (err.type === "entity.parse.failed") {
+        return res.status(400).json({ message: "Invalid JSON body" });
+    }
+    console.error(err);
+    res.status(500).json({ message: "Something went wrong" });
+});
+
+const start = async () => {
+    await mongoose.connect(process.env.DBURL);
+    app.listen(process.env.PORT, () => {
+        console.log(`server running on port ${process.env.PORT}`);
+    });
+};
+
+start().catch((err) => {
+    console.error("failed to start server", err);
+    process.exit(1);
+});

@@ -4,10 +4,11 @@ const { authMiddleware } = require('../middleware');
 const { Account } = require('../db');
 const { default: mongoose } = require('mongoose');
 const zod = require("zod");
+const { asyncHandler } = require("../utils/asyncHandler");
 
 const router = express.Router();
 
-router.get("/balance", authMiddleware, async (req, res) => {
+router.get("/balance", authMiddleware, asyncHandler(async (req, res) => {
     const account = await Account.findOne({
         userId: req.userId
     });
@@ -21,14 +22,14 @@ router.get("/balance", authMiddleware, async (req, res) => {
     res.json({
         balance: account.balance
     })
-});
+}));
 
 const transferBody = zod.object({
     to: zod.string().regex(/^[a-f\d]{24}$/i, "Invalid account"),
     amount: zod.number().positive("Invalid amount").finite()
 })
 
-router.post("/transfer", authMiddleware, async (req, res) => {
+router.post("/transfer", authMiddleware, asyncHandler(async (req, res) => {
     const parsed = transferBody.safeParse(req.body);
     if (!parsed.success) {
         return res.status(400).json({
@@ -87,6 +88,6 @@ router.post("/transfer", authMiddleware, async (req, res) => {
     } finally {
         await session.endSession();
     }
-});
+}));
 
 module.exports = router;

@@ -7,6 +7,7 @@ const jwt = require("jsonwebtoken");
 const { authMiddleware } = require("../middleware");
 const bcrypt = require("bcrypt");
 const mongoose = require("mongoose");
+const { asyncHandler } = require("../utils/asyncHandler");
 
 const signupBody = zod.object({
     username: zod.string().trim().toLowerCase().email("Enter a valid email"),
@@ -19,7 +20,7 @@ const signupBody = zod.object({
         .regex(/[0-9]/, "Password must contain a number")
 })
 
-router.post("/signup", async (req, res) => {
+router.post("/signup", asyncHandler(async (req, res) => {
     const parsed = signupBody.safeParse(req.body)
     if (!parsed.success) {
         return res.status(400).json({
@@ -70,7 +71,7 @@ router.post("/signup", async (req, res) => {
         message: "User created successfully",
         token: token
     })
-})
+}))
 
 
 const signinBody = zod.object({
@@ -78,7 +79,7 @@ const signinBody = zod.object({
     password: zod.string()
 })
 
-router.post("/signin", async (req, res) => {
+router.post("/signin", asyncHandler(async (req, res) => {
     const { success } = signinBody.safeParse(req.body)
     if (!success) {
         return res.status(400).json({
@@ -104,7 +105,7 @@ router.post("/signin", async (req, res) => {
     res.json({
         token: token
     })
-})
+}))
 
 const updateBody = zod.object({
     password: zod.string().optional(),
@@ -112,7 +113,7 @@ const updateBody = zod.object({
     lastName: zod.string().optional(),
 })
 
-router.put("/", authMiddleware, async (req, res) => {
+router.put("/", authMiddleware, asyncHandler(async (req, res) => {
     const { success, data } = updateBody.safeParse(req.body)
     if (!success) {
         return res.status(400).json({
@@ -129,11 +130,11 @@ router.put("/", authMiddleware, async (req, res) => {
     res.json({
         message: "Updated successfully"
     })
-})
+}))
 
 const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-router.get("/bulk", authMiddleware, async (req, res) => {
+router.get("/bulk", authMiddleware, asyncHandler(async (req, res) => {
     const filter = escapeRegex(String(req.query.filter || "").trim().slice(0, 50));
     const limit = Math.min(Number(req.query.limit) || 20, 50);
 
@@ -161,9 +162,9 @@ router.get("/bulk", authMiddleware, async (req, res) => {
             _id: user._id
         }))
     })
-})
+}))
 
-router.get("/getUser", authMiddleware, async (req, res) => {
+router.get("/getUser", authMiddleware, asyncHandler(async (req, res) => {
     const user = await User.findOne({
         _id: req.userId
     });
@@ -175,7 +176,7 @@ router.get("/getUser", authMiddleware, async (req, res) => {
     }
 
     res.json({ firstName: user.firstName });
-});
+}));
 
 router.get("/cron", async (req, res) => {
 
