@@ -5,6 +5,7 @@ const { Account } = require('../db');
 const { default: mongoose } = require('mongoose');
 const zod = require("zod");
 const { asyncHandler } = require("../utils/asyncHandler");
+const { transferLimiter } = require("../rateLimit");
 
 const router = express.Router();
 
@@ -29,7 +30,7 @@ const transferBody = zod.object({
     amount: zod.number().positive("Invalid amount").finite()
 })
 
-router.post("/transfer", authMiddleware, asyncHandler(async (req, res) => {
+router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (req, res) => {
     const parsed = transferBody.safeParse(req.body);
     if (!parsed.success) {
         return res.status(400).json({

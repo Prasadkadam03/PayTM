@@ -8,6 +8,7 @@ const { authMiddleware } = require("../middleware");
 const bcrypt = require("bcrypt");
 const mongoose = require("mongoose");
 const { asyncHandler } = require("../utils/asyncHandler");
+const { authLimiter } = require("../rateLimit");
 
 const signupBody = zod.object({
     username: zod.string().trim().toLowerCase().email("Enter a valid email"),
@@ -20,7 +21,7 @@ const signupBody = zod.object({
         .regex(/[0-9]/, "Password must contain a number")
 })
 
-router.post("/signup", asyncHandler(async (req, res) => {
+router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
     const parsed = signupBody.safeParse(req.body)
     if (!parsed.success) {
         return res.status(400).json({
@@ -79,7 +80,7 @@ const signinBody = zod.object({
     password: zod.string()
 })
 
-router.post("/signin", asyncHandler(async (req, res) => {
+router.post("/signin", authLimiter, asyncHandler(async (req, res) => {
     const { success } = signinBody.safeParse(req.body)
     if (!success) {
         return res.status(400).json({
