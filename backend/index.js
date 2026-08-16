@@ -5,6 +5,7 @@ const helmet = require("helmet");
 const rootRouter = require("./routes/index");
 const dotEnv = require("dotenv");
 const { default: mongoose } = require('mongoose');
+const { loadConfig } = require("./config");
 
 const app = express();
 dotEnv.config();
@@ -33,9 +34,10 @@ app.use((err, req, res, next) => {
 });
 
 const start = async () => {
-    await mongoose.connect(process.env.DBURL);
-    app.listen(process.env.PORT, () => {
-        console.log(`server running on port ${process.env.PORT}`);
+    const config = loadConfig();
+    await mongoose.connect(config.DBURL);
+    app.listen(config.PORT, () => {
+        console.log(`server running on port ${config.PORT}`);
     });
 };
 
