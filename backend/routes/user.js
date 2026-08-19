@@ -3,8 +3,7 @@ const express = require('express');
 const router = express.Router();
 const zod = require("zod");
 const { User, Account } = require("../db");
-const jwt = require("jsonwebtoken");
-const { authMiddleware } = require("../middleware");
+const { authMiddleware, signToken } = require("../middleware");
 const bcrypt = require("bcrypt");
 const mongoose = require("mongoose");
 const { asyncHandler } = require("../utils/asyncHandler");
@@ -64,9 +63,7 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
         await session.endSession();
     }
 
-    const token = jwt.sign({
-        userId
-    }, process.env.JWT_SECRET);
+    const token = signToken(userId);
 
     res.json({
         message: "User created successfully",
@@ -99,9 +96,7 @@ router.post("/signin", authLimiter, asyncHandler(async (req, res) => {
         });
     }
 
-    const token = jwt.sign({
-        userId: user._id
-    }, process.env.JWT_SECRET);
+    const token = signToken(user._id);
 
     res.json({
         token: token
