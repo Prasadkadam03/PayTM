@@ -12,7 +12,18 @@ dotEnv.config();
 
 app.disable("x-powered-by");
 app.use(helmet());
-app.use(cors());
+// only the frontend origins listed in CORS_ORIGIN (comma separated) may call the api from a browser
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
+    .split(",")
+    .map(origin => origin.trim())
+    .filter(Boolean);
+
+app.use(cors({
+    origin: (origin, callback) => {
+        // requests without an Origin header (curl, server to server) are not subject to CORS
+        callback(null, !origin || allowedOrigins.includes(origin));
+    }
+}));
 app.use(express.json({ limit: "10kb" }));
 
 app.use("/api/v1", rootRouter);
