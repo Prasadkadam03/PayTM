@@ -56,7 +56,7 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
 
             await Account.create([{
                 userId,
-                balance: 1000 // every user gets 1000 as signup.. we have lot of money 🥱
+                balance: 100000 // every user gets ₹1000 (in paise) as signup.. we have lot of money 🥱
             }], { session })
         });
     } finally {

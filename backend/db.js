@@ -37,9 +37,15 @@ const accountSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    // stored in paise (₹10.50 -> 1050) so money math is always exact integers
     balance: {
         type: Number,
-        required: true
+        required: true,
+        min: 0,
+        validate: {
+            validator: Number.isInteger,
+            message: "balance must be a whole number of paise"
+        }
     }
 });
 

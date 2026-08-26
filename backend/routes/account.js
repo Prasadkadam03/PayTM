@@ -27,7 +27,8 @@ router.get("/balance", authMiddleware, asyncHandler(async (req, res) => {
 
 const transferBody = zod.object({
     to: zod.string().regex(/^[a-f\d]{24}$/i, "Invalid account"),
-    amount: zod.number().positive("Invalid amount").finite()
+    // amount is in paise
+    amount: zod.number().int("Invalid amount").positive("Invalid amount").max(Number.MAX_SAFE_INTEGER)
 })
 
 router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (req, res) => {
