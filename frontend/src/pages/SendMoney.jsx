@@ -5,6 +5,7 @@ import { AuthCard } from "../Components/AuthCard"
 import { useState } from "react"
 import axios from "axios"
 import { toast } from "react-toastify";
+import { formatINR, toPaise } from "../utils/money";
 
 export const SendMoney = () => {
 
@@ -21,17 +22,22 @@ export const SendMoney = () => {
 
     const onSubmit = async (e) => {
         e.preventDefault();
+        const paise = toPaise(amount);
+        if (!Number.isInteger(paise) || paise <= 0) {
+            toast.error("Enter a valid amount (up to 2 decimals)");
+            return;
+        }
         setSending(true);
         try {
             await toast.promise(
                 axios.post(
                     `${import.meta.env.VITE_SERVER_URL}/api/v1/account/transfer`,
-                    { to: id, amount: Number(amount) },
+                    { to: id, amount: paise },
                     { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
                 ),
                 {
                     pending: "Sending money...",
-                    success: `₹${amount} sent to ${fname}`,
+                    success: `${formatINR(paise)} sent to ${fname}`,
                     error: {
                         render({ data }) {
                             return data?.response?.data?.message || "Transfer failed";
