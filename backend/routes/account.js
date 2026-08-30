@@ -51,16 +51,6 @@ router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (re
     try {
         session.startTransaction();
 
-        // Fetch the accounts within the transaction
-        const account = await Account.findOne({ userId: req.userId }).session(session);
-
-        if (!account || account.balance < amount) {
-            await session.abortTransaction();
-            return res.status(400).json({
-                message: "Insufficient balance !"
-            });
-        }
-
         const toAccount = await Account.findOne({ userId: to }).session(session);
 
         if (!toAccount) {
@@ -70,8 +60,19 @@ router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (re
             });
         }
 
-        // Perform the transfer
-        await Account.updateOne({ userId: req.userId }, { $inc: { balance: -amount } }).session(session);
+        // check and debit in one atomic update, so two parallel transfers can never overdraw
+        const debit = await Account.updateOne(
+            { userId: req.userId, balance: { $gte: amount } },
+            { $inc: { balance: -amount } }
+        ).session(session);
+
+        if (debit.modifiedCount !== 1) {
+            await session.abortTransaction();
+            return res.status(400).json({
+                message: "Insufficient balance !"
+            });
+        }
+
         await Account.updateOne({ userId: to }, { $inc: { balance: amount } }).session(session);
 
         // Commit the transaction
