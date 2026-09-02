@@ -49,11 +49,45 @@ const accountSchema = new mongoose.Schema({
     }
 });
 
+const transactionSchema = new mongoose.Schema({
+    from: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    to: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    // paise, same as Account.balance
+    amount: {
+        type: Number,
+        required: true,
+        min: 1,
+        validate: {
+            validator: Number.isInteger,
+            message: "amount must be a whole number of paise"
+        }
+    },
+    status: {
+        type: String,
+        enum: ['success', 'failed'],
+        default: 'success'
+    }
+}, { timestamps: true });
+
+// history is read newest first for one user, as sender or receiver
+transactionSchema.index({ from: 1, _id: -1 });
+transactionSchema.index({ to: 1, _id: -1 });
+
 const Account = mongoose.model('Account', accountSchema);
 const User = mongoose.model('User', userSchema);
+const Transaction = mongoose.model('Transaction', transactionSchema);
 
 module.exports = {
 	User,
-    Account
+    Account,
+    Transaction
 };
 

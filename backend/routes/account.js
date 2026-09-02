@@ -1,7 +1,7 @@
 // backend/routes/account.js
 const express = require('express');
 const { authMiddleware } = require('../middleware');
-const { Account } = require('../db');
+const { Account, Transaction } = require('../db');
 const { default: mongoose } = require('mongoose');
 const zod = require("zod");
 const { asyncHandler } = require("../utils/asyncHandler");
@@ -75,10 +75,18 @@ router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (re
 
         await Account.updateOne({ userId: to }, { $inc: { balance: amount } }).session(session);
 
+        // the record is part of the same mongo transaction, so it exists only if the money moved
+        const [transaction] = await Transaction.create([{
+            from: req.userId,
+            to,
+            amount
+        }], { session });
+
         // Commit the transaction
         await session.commitTransaction();
         res.json({
-            message: "Transfer successful"
+            message: "Transfer successful",
+            transactionId: transaction._id
         });
     } catch (err) {
         if (session.inTransaction()) {
