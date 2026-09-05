@@ -101,4 +101,58 @@ router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (re
     }
 }));
 
+const historyQuery = zod.object({
+    type: zod.enum(["all", "sent", "received"]).default("all"),
+    cursor: zod.string().regex(/^[a-f\d]{24}$/i, "Invalid cursor").optional(),
+    limit: zod.coerce.number().int().min(1).max(50).default(20)
+})
+
+// newest first. pass the returned nextCursor to get the next page
+router.get("/transactions", authMiddleware, asyncHandler(async (req, res) => {
+    const parsed = historyQuery.safeParse(req.query);
+    if (!parsed.success) {
+        return res.status(400).json({
+            message: parsed.error.issues[0].message
+        });
+    }
+    const { type, cursor, limit } = parsed.data;
+
+    const me = new mongoose.Types.ObjectId(String(req.userId));
+    const filter = type === "sent" ? { from: me }
+        : type === "received" ? { to: me }
+            : { $or: [{ from: me }, { to: me }] };
+    if (cursor) {
+        filter._id = { $lt: new mongoose.Types.ObjectId(cursor) };
+    }
+
+    // one extra row tells us if there is another page
+    const rows = await Transaction.find(filter)
+        .sort({ _id: -1 })
+        .limit(limit + 1)
+        .populate("from", "firstName lastName")
+        .populate("to", "firstName lastName")
+        .lean();
+
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+
+    res.json({
+        transactions: page.map(t => {
+            const sent = String(t.from?._id) === String(me);
+            const other = sent ? t.to : t.from;
+            return {
+                _id: t._id,
+                direction: sent ? "sent" : "received",
+                amount: t.amount,
+                status: t.status,
+                createdAt: t.createdAt,
+                counterparty: other
+                    ? { _id: other._id, firstName: other.firstName, lastName: other.lastName }
+                    : null
+            };
+        }),
+        nextCursor: hasMore ? page[page.length - 1]._id : null
+    });
+}));
+
 module.exports = router;
