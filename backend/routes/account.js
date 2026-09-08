@@ -28,7 +28,9 @@ router.get("/balance", authMiddleware, asyncHandler(async (req, res) => {
 const transferBody = zod.object({
     to: zod.string().regex(/^[a-f\d]{24}$/i, "Invalid account"),
     // amount is in paise
-    amount: zod.number().int("Invalid amount").positive("Invalid amount").max(Number.MAX_SAFE_INTEGER)
+    amount: zod.number().int("Invalid amount").positive("Invalid amount").max(Number.MAX_SAFE_INTEGER),
+    // control characters are stripped, the rest is escaped by react when shown
+    note: zod.string().transform(s => s.replace(/[\u0000-\u001f\u007f]/g, "").trim()).pipe(zod.string().max(100, "Note can be at most 100 characters")).optional()
 })
 
 router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (req, res) => {
@@ -38,7 +40,7 @@ router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (re
             message: parsed.error.issues[0].message
         });
     }
-    const { amount, to } = parsed.data;
+    const { amount, to, note } = parsed.data;
 
     if (to === String(req.userId)) {
         return res.status(400).json({
@@ -79,7 +81,8 @@ router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (re
         const [transaction] = await Transaction.create([{
             from: req.userId,
             to,
-            amount
+            amount,
+            note: note || undefined
         }], { session });
 
         // Commit the transaction
@@ -144,6 +147,7 @@ router.get("/transactions", authMiddleware, asyncHandler(async (req, res) => {
                 _id: t._id,
                 direction: sent ? "sent" : "received",
                 amount: t.amount,
+                note: t.note || "",
                 status: t.status,
                 createdAt: t.createdAt,
                 counterparty: other

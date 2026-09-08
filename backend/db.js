@@ -70,6 +70,11 @@ const transactionSchema = new mongoose.Schema({
             message: "amount must be a whole number of paise"
         }
     },
+    note: {
+        type: String,
+        trim: true,
+        maxLength: 100
+    },
     status: {
         type: String,
         enum: ['success', 'failed'],

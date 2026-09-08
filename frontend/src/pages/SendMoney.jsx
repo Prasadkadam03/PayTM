@@ -16,6 +16,7 @@ export const SendMoney = () => {
     const lname = searchParams.get("lname") || "";
 
     const [amount, setAmount] = useState("");
+    const [note, setNote] = useState("");
     const [sending, setSending] = useState(false);
 
     const navigate = useNavigate();
@@ -32,7 +33,7 @@ export const SendMoney = () => {
             await toast.promise(
                 axios.post(
                     `${import.meta.env.VITE_SERVER_URL}/api/v1/account/transfer`,
-                    { to: id, amount: paise },
+                    { to: id, amount: paise, note: note.trim() || undefined },
                     { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
                 ),
                 {
@@ -86,6 +87,19 @@ export const SendMoney = () => {
                         required
                     />
                 </div>
+            </label>
+
+            <label className="mt-4 block">
+                <span className="mb-1.5 flex justify-between text-sm font-medium text-slate-700">
+                    Note <span className="font-normal text-slate-400">{note.length}/100</span>
+                </span>
+                <input
+                    onChange={(e) => setNote(e.target.value)}
+                    value={note}
+                    maxLength={100}
+                    placeholder="What's it for? (optional)"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-brand focus:ring-4 focus:ring-brand/15"
+                />
             </label>
 
             <div className="mt-6 space-y-3">
