@@ -3,7 +3,7 @@ import { AppBar } from "../Components/AppBar"
 import { Balance } from "../Components/Balance"
 import { Users } from "../Components/Users"
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 
 export const Dashboard = () => {
@@ -35,7 +35,12 @@ export const Dashboard = () => {
 
     <main className="mx-auto max-w-3xl px-4 sm:px-6 py-8">
       <section className="rounded-2xl bg-brand-navy p-6 sm:p-8 text-white">
-        <p className="text-sm text-white/70">Available balance</p>
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-white/70">Available balance</p>
+          <Link to="/history" className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/20">
+            History →
+          </Link>
+        </div>
         <div className="mt-2">
           {loading
             ? <div className="h-12 w-48 rounded-lg bg-white/15 animate-pulse" />

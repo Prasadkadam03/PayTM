@@ -9,6 +9,7 @@ import { Signup } from "./pages/Signup";
 import { Signin } from "./pages/Signin";
 import { Dashboard } from "./pages/Dashboard";
 import { SendMoney } from "./pages/SendMoney";
+import { History } from "./pages/History";
 import { ProtectedRoute, GuestRoute } from "./Components/RouteGuards";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -23,6 +24,7 @@ function App() {
           <Route path="/signin" element={<GuestRoute><Signin /></GuestRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/send" element={<ProtectedRoute><SendMoney /></ProtectedRoute>} />
+          <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
           <Route path="*" element={<Landing />} />
         </Routes>
       </BrowserRouter>
