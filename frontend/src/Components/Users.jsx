@@ -7,24 +7,35 @@ export const Users = () => {
 
     const [users, setUsers] = useState([]);
     const [filter, setFilter] = useState("");
+    const [debouncedFilter, setDebouncedFilter] = useState("");
     const [loading, setLoading] = useState(true);
 
     const userToken = localStorage.getItem("token");
 
+    // wait until typing pauses for 300ms before hitting the api
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedFilter(filter.trim()), 300);
+        return () => clearTimeout(timer);
+    }, [filter])
 
     useEffect(() => {
-        axios.get(import.meta.env.VITE_SERVER_URL + "/api/v1/user/bulk?filter=" + filter, {
+        // a slower earlier response must not overwrite a newer one
+        let ignore = false;
+        axios.get(import.meta.env.VITE_SERVER_URL + "/api/v1/user/bulk", {
+            params: { filter: debouncedFilter },
             headers: {
                 authorization: "Bearer " + userToken,
             },
         })
             .then(response => {
+                if (ignore) return;
                 setUsers(response.data.users || [])
                 setLoading(false);
             }).catch((err) => {
                 console.log("error=" + err);
             })
-    }, [filter])
+        return () => { ignore = true; };
+    }, [debouncedFilter])
 
     return <section className="mt-8 rounded-2xl border border-slate-200 bg-white">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 p-4 sm:p-5">
