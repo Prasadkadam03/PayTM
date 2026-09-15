@@ -4,26 +4,31 @@ import {
   Routes,
 } from "react-router-dom";
 
+import { Landing } from "./pages/Landing";
 import { Signup } from "./pages/Signup";
 import { Signin } from "./pages/Signin";
 import { Dashboard } from "./pages/Dashboard";
 import { SendMoney } from "./pages/SendMoney";
+import { History } from "./pages/History";
+import { ProtectedRoute, GuestRoute } from "./Components/RouteGuards";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   return (
-    <div className="font-mono">
+    <div className="font-sans">
       <BrowserRouter>
         <Routes>
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/signin" element={<Signin />} /> 
-          <Route path="*" element={<Signup />} /> 
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/send" element={<SendMoney />} />
+          <Route path="/" element={<Landing />} />
+          <Route path="/signup" element={<GuestRoute><Signup /></GuestRoute>} />
+          <Route path="/signin" element={<GuestRoute><Signin /></GuestRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/send" element={<ProtectedRoute><SendMoney /></ProtectedRoute>} />
+          <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+          <Route path="*" element={<Landing />} />
         </Routes>
       </BrowserRouter>
-      <ToastContainer />
+      <ToastContainer position="top-center" />
     </div>
   )
 }

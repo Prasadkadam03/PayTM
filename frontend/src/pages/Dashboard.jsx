@@ -3,8 +3,7 @@ import { AppBar } from "../Components/AppBar"
 import { Balance } from "../Components/Balance"
 import { Users } from "../Components/Users"
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ThreeDots } from "react-loader-spinner";
+import { Link, useNavigate } from "react-router-dom";
 
 
 export const Dashboard = () => {
@@ -31,21 +30,25 @@ export const Dashboard = () => {
 
   }, []);
 
-  return <div className="bg-zinc-200 min-h-screen h-full sm:px-8 px-3">
+  return <div className="min-h-screen">
     <AppBar />
-    <div className="sm:px-8 px-4">
-      <div className="font-bold  sm:text-2xl text-xl p-1 flex col-center justify-start" >
-        <div >Your Balance :    </div>
-        
-        {loading ? <div>
-          <div class="pl-2 font-semibold animate-pulse">
-            <div class="h-7 bg-cyan-200 rounded w-16"></div>
-          </div>
-        </div> : <Balance label={balance} />}
-      
-      </div>
+
+    <main className="mx-auto max-w-3xl px-4 sm:px-6 py-8">
+      <section className="rounded-2xl bg-brand-navy p-6 sm:p-8 text-white">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-white/70">Available balance</p>
+          <Link to="/history" className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/20">
+            History →
+          </Link>
+        </div>
+        <div className="mt-2">
+          {loading
+            ? <div className="h-12 w-48 rounded-lg bg-white/15 animate-pulse" />
+            : <Balance label={balance} />}
+        </div>
+      </section>
 
       <Users />
-    </div>
+    </main>
   </div>
-} 
+}

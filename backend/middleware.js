@@ -4,7 +4,7 @@ const authMiddleware = (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(403).json({});
+        return res.status(401).json({ message: "Please sign in" });
     }
 
     const token = authHeader.split(' ')[1];
@@ -16,10 +16,18 @@ const authMiddleware = (req, res, next) => {
 
         next();
     } catch (err) {
-        return res.status(403).json({});
+        const message = err.name === "TokenExpiredError"
+            ? "Session expired, please sign in again"
+            : "Please sign in";
+        return res.status(401).json({ message });
     }
 };
 
+const signToken = (userId) => jwt.sign({ userId }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || "1d"
+});
+
 module.exports = {
-    authMiddleware
+    authMiddleware,
+    signToken
 }

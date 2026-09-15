@@ -1,9 +1,11 @@
 import axios from "axios";
 import { useEffect, useState } from "react"
+import { Link, useNavigate } from "react-router-dom";
 
 export const AppBar = () => {
 
     const [firstName, setFirstName] = useState("");
+    const navigate = useNavigate();
 
     useEffect(() => {
         const userToken = localStorage.getItem("token");
@@ -17,26 +19,29 @@ export const AppBar = () => {
                 setFirstName(response.data.firstName);
             }).catch((err) => {
                 console.log("error=" + err);
-
             })
 
     }, []);
 
-    return <div className="py-4 sm:py-8  sm:px-2 w-full  ">
-        <div className="sm:flex justify-between rounded-lg p-2  bg-white shadow-2xl  hover:shadow-cyan-200/100 " >
-            <div className="font-bold font-sans sm:text-4xl text-4xl text-center text-cyan-500 sm:px-4 px-1">
-                PayTm
-            </div>
-            <div className="flex justify-center col-center h-full  pt-2">
-                <div className="font-medium sm:pt-2 text-2xl pr-2 ">
-                    Hello {firstName}
+    const signOut = () => {
+        localStorage.removeItem("token");
+        navigate("/signin");
+    };
+
+    return <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 sm:px-6 py-4">
+            <Link to="/dashboard" className="text-xl font-bold text-brand-navy">
+                Pay<span className="text-brand">TM</span>
+            </Link>
+            <div className="flex items-center gap-3">
+                <span className="hidden sm:inline text-sm text-slate-500">Hi, <span className="font-medium text-slate-900">{firstName}</span></span>
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-light text-sm font-semibold text-brand-navy">
+                    {firstName[0]?.toUpperCase()}
                 </div>
-                <div className="rounded-full sm:h-12 sm:w-12 h-8 w-8 bg-cyan-200 flex justify-center mt-1 mr-2">
-                    <div className="flex flex-col justify-center h-full text-xl">
-                        {firstName[0]?.toUpperCase()}
-                    </div>
-                </div>
+                <button onClick={signOut} className="rounded-lg px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-900">
+                    Sign out
+                </button>
             </div>
         </div>
-    </div>
+    </header>
 }
