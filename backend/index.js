@@ -2,6 +2,8 @@
 const express = require('express');
 const cors = require("cors");
 const helmet = require("helmet");
+const mongoSanitize = require("express-mongo-sanitize");
+const hpp = require("hpp");
 const rootRouter = require("./routes/index");
 const dotEnv = require("dotenv");
 const { default: mongoose } = require('mongoose');
@@ -25,6 +27,10 @@ app.use(cors({
     }
 }));
 app.use(express.json({ limit: "10kb" }));
+// strips keys starting with $ or containing . so user input can't become a mongo operator
+app.use(mongoSanitize());
+// ?type=sent&type=received -> last value only, so query params are always strings
+app.use(hpp());
 
 app.use("/api/v1", rootRouter);
 
