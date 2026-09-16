@@ -7,7 +7,7 @@ const { authMiddleware, signToken } = require("../middleware");
 const bcrypt = require("bcrypt");
 const mongoose = require("mongoose");
 const { asyncHandler } = require("../utils/asyncHandler");
-const { authLimiter } = require("../rateLimit");
+const { authLimiter, signinLimiter } = require("../rateLimit");
 
 const signupBody = zod.object({
     username: zod.string().trim().toLowerCase().email("Enter a valid email"),
@@ -77,7 +77,7 @@ const signinBody = zod.object({
     password: zod.string()
 })
 
-router.post("/signin", authLimiter, asyncHandler(async (req, res) => {
+router.post("/signin", authLimiter, signinLimiter, asyncHandler(async (req, res) => {
     const { success } = signinBody.safeParse(req.body)
     if (!success) {
         return res.status(400).json({
