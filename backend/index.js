@@ -13,6 +13,10 @@ const app = express();
 dotEnv.config();
 
 app.disable("x-powered-by");
+// behind render's proxy the real client ip is in X-Forwarded-For (used by rate limits and the audit log)
+if (process.env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+}
 app.use(helmet());
 // only the frontend origins listed in CORS_ORIGIN (comma separated) may call the api from a browser
 const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")

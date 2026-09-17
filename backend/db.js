@@ -86,13 +86,33 @@ const transactionSchema = new mongoose.Schema({
 transactionSchema.index({ from: 1, _id: -1 });
 transactionSchema.index({ to: 1, _id: -1 });
 
+// security events. the app only ever inserts into this collection, never updates or deletes
+const auditLogSchema = new mongoose.Schema({
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        index: true
+    },
+    event: {
+        type: String,
+        required: true
+    },
+    ip: String,
+    userAgent: String,
+    meta: mongoose.Schema.Types.Mixed
+}, { timestamps: { createdAt: true, updatedAt: false } });
+
+auditLogSchema.index({ userId: 1, _id: -1 });
+
 const Account = mongoose.model('Account', accountSchema);
 const User = mongoose.model('User', userSchema);
 const Transaction = mongoose.model('Transaction', transactionSchema);
+const AuditLog = mongoose.model('AuditLog', auditLogSchema);
 
 module.exports = {
 	User,
     Account,
-    Transaction
+    Transaction,
+    AuditLog
 };
 

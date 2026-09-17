@@ -5,6 +5,7 @@ const { Account, Transaction } = require('../db');
 const { default: mongoose } = require('mongoose');
 const zod = require("zod");
 const { asyncHandler } = require("../utils/asyncHandler");
+const { audit } = require("../utils/audit");
 const { transferLimiter } = require("../rateLimit");
 
 const router = express.Router();
@@ -85,6 +86,8 @@ router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (re
                 note: note || undefined
             }], { session });
         });
+
+        await audit(req, "transfer", { meta: { to, amount, transactionId: transaction._id } });
 
         res.json({
             message: "Transfer successful",

@@ -2,7 +2,8 @@
 const express = require('express');
 const router = express.Router();
 const zod = require("zod");
-const { User, Account } = require("../db");
+const { User, Account, AuditLog } = require("../db");
+const { audit } = require("../utils/audit");
 const { authMiddleware, signToken } = require("../middleware");
 const bcrypt = require("bcrypt");
 const mongoose = require("mongoose");
@@ -64,6 +65,7 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
     }
 
     const token = signToken(userId);
+    await audit(req, "signup", { userId });
 
     res.json({
         message: "User created successfully",
@@ -91,12 +93,16 @@ router.post("/signin", authLimiter, signinLimiter, asyncHandler(async (req, res)
 
     const match = user && await bcrypt.compare(req.body.password, user.password);
     if (!match) {
+        if (user) {
+            await audit(req, "signin_failed", { userId: user._id });
+        }
         return res.status(401).json({
             message: "Invalid email or password"
         });
     }
 
     const token = signToken(user._id);
+    await audit(req, "signin", { userId: user._id });
 
     res.json({
         token: token
@@ -172,6 +178,17 @@ router.get("/getUser", authMiddleware, asyncHandler(async (req, res) => {
     }
 
     res.json({ firstName: user.firstName });
+}));
+
+// the signed in user's own security events, newest first
+router.get("/activity", authMiddleware, asyncHandler(async (req, res) => {
+    const events = await AuditLog.find({ userId: req.userId })
+        .sort({ _id: -1 })
+        .limit(50)
+        .select("event ip userAgent meta createdAt")
+        .lean();
+
+    res.json({ events });
 }));
 
 router.get("/cron", async (req, res) => {
