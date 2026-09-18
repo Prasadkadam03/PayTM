@@ -4,6 +4,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const mongoSanitize = require("express-mongo-sanitize");
 const hpp = require("hpp");
+const cookieParser = require("cookie-parser");
 const rootRouter = require("./routes/index");
 const dotEnv = require("dotenv");
 const { default: mongoose } = require('mongoose');
@@ -28,9 +29,12 @@ app.use(cors({
     origin: (origin, callback) => {
         // requests without an Origin header (curl, server to server) are not subject to CORS
         callback(null, !origin || allowedOrigins.includes(origin));
-    }
+    },
+    // the refresh token travels as a cookie
+    credentials: true
 }));
 app.use(express.json({ limit: "10kb" }));
+app.use(cookieParser());
 // strips keys starting with $ or containing . so user input can't become a mongo operator
 app.use(mongoSanitize());
 // ?type=sent&type=received -> last value only, so query params are always strings

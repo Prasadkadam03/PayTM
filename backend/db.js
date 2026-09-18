@@ -86,6 +86,34 @@ const transactionSchema = new mongoose.Schema({
 transactionSchema.index({ from: 1, _id: -1 });
 transactionSchema.index({ to: 1, _id: -1 });
 
+// one row per signed in device. only a hash of the refresh token is stored
+const sessionSchema = new mongoose.Schema({
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+        index: true
+    },
+    tokenHash: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    userAgent: String,
+    ip: String,
+    lastUsedAt: Date,
+    expiresAt: {
+        type: Date,
+        required: true
+    },
+    revokedAt: Date,
+    // rotated = replaced by a newer token, anything else = ended on purpose
+    revokedReason: String
+}, { timestamps: true });
+
+// mongo deletes sessions a day after they expire
+sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 24 * 60 * 60 });
+
 // security events. the app only ever inserts into this collection, never updates or deletes
 const auditLogSchema = new mongoose.Schema({
     userId: {
@@ -108,11 +136,13 @@ const Account = mongoose.model('Account', accountSchema);
 const User = mongoose.model('User', userSchema);
 const Transaction = mongoose.model('Transaction', transactionSchema);
 const AuditLog = mongoose.model('AuditLog', auditLogSchema);
+const Session = mongoose.model('Session', sessionSchema);
 
 module.exports = {
 	User,
     Account,
     Transaction,
-    AuditLog
+    AuditLog,
+    Session
 };
 

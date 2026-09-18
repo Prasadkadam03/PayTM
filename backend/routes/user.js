@@ -2,9 +2,10 @@
 const express = require('express');
 const router = express.Router();
 const zod = require("zod");
-const { User, Account, AuditLog } = require("../db");
+const { User, Account, AuditLog, Session } = require("../db");
 const { audit } = require("../utils/audit");
-const { authMiddleware, signToken } = require("../middleware");
+const { authMiddleware } = require("../middleware");
+const { startSession, rotateSession, revokeSession, revokeAllSessions, clearRefreshCookie, RefreshError } = require("../utils/session");
 const bcrypt = require("bcrypt");
 const mongoose = require("mongoose");
 const { asyncHandler } = require("../utils/asyncHandler");
@@ -64,7 +65,7 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
         await session.endSession();
     }
 
-    const token = signToken(userId);
+    const token = await startSession(req, res, userId);
     await audit(req, "signup", { userId });
 
     res.json({
@@ -101,7 +102,7 @@ router.post("/signin", authLimiter, signinLimiter, asyncHandler(async (req, res)
         });
     }
 
-    const token = signToken(user._id);
+    const token = await startSession(req, res, user._id);
     await audit(req, "signin", { userId: user._id });
 
     res.json({
@@ -178,6 +179,61 @@ router.get("/getUser", authMiddleware, asyncHandler(async (req, res) => {
     }
 
     res.json({ firstName: user.firstName });
+}));
+
+// new access token from the refresh cookie. the cookie is rotated every time
+router.post("/refresh", authLimiter, asyncHandler(async (req, res) => {
+    try {
+        const { accessToken } = await rotateSession(req, res);
+        res.json({ token: accessToken });
+    } catch (err) {
+        if (err instanceof RefreshError) {
+            return res.status(401).json({ message: err.message });
+        }
+        throw err;
+    }
+}));
+
+router.post("/logout", authMiddleware, asyncHandler(async (req, res) => {
+    if (req.sessionId) {
+        await revokeSession(req.sessionId, req.userId);
+    }
+    clearRefreshCookie(res);
+    await audit(req, "logout");
+    res.json({ message: "Signed out" });
+}));
+
+router.post("/logout-all", authMiddleware, asyncHandler(async (req, res) => {
+    await revokeAllSessions(req.userId, "logout_all");
+    clearRefreshCookie(res);
+    await audit(req, "logout_all");
+    res.json({ message: "Signed out of all devices" });
+}));
+
+router.get("/sessions", authMiddleware, asyncHandler(async (req, res) => {
+    const sessions = await Session.find({ userId: req.userId, revokedAt: null, expiresAt: { $gt: new Date() } })
+        .sort({ lastUsedAt: -1 })
+        .select("userAgent ip lastUsedAt createdAt")
+        .lean();
+
+    res.json({
+        sessions: sessions.map(s => ({
+            ...s,
+            current: String(s._id) === String(req.sessionId)
+        }))
+    });
+}));
+
+router.delete("/sessions/:id", authMiddleware, asyncHandler(async (req, res) => {
+    if (!/^[a-f\d]{24}$/i.test(req.params.id)) {
+        return res.status(400).json({ message: "Invalid session" });
+    }
+    const result = await revokeSession(req.params.id, req.userId, "revoked");
+    if (result.modifiedCount !== 1) {
+        return res.status(404).json({ message: "Session not found" });
+    }
+    await audit(req, "session_revoked", { meta: { sessionId: req.params.id } });
+    res.json({ message: "Session signed out" });
 }));
 
 // the signed in user's own security events, newest first

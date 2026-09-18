@@ -23,7 +23,11 @@ export const AppBar = () => {
 
     }, []);
 
-    const signOut = () => {
+    const signOut = async () => {
+        // ends this device's session on the server too (revokes the refresh cookie)
+        await axios.post(import.meta.env.VITE_SERVER_URL + "/api/v1/user/logout", null, {
+            headers: { authorization: "Bearer " + localStorage.getItem("token") },
+        }).catch(() => {});
         localStorage.removeItem("token");
         navigate("/signin");
     };
