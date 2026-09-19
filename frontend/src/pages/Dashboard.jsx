@@ -2,6 +2,7 @@ import axios from "axios";
 import { AppBar } from "../Components/AppBar"
 import { Balance } from "../Components/Balance"
 import { Users } from "../Components/Users"
+import { VerifyBanner } from "../Components/VerifyBanner"
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -34,6 +35,7 @@ export const Dashboard = () => {
     <AppBar />
 
     <main className="mx-auto max-w-3xl px-4 sm:px-6 py-8">
+      <VerifyBanner />
       <section className="rounded-2xl bg-brand-navy p-6 sm:p-8 text-white">
         <div className="flex items-center justify-between">
           <p className="text-sm text-white/70">Available balance</p>

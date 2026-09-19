@@ -28,8 +28,13 @@ const userSchema = new mongoose.Schema({
         required: true,
         trim: true,
         maxLength: 50
-    }
+    },
+    // false until the email link is clicked. accounts from before verification existed
+    // have no value and are treated as verified
+    emailVerified: Boolean
 });
+
+const isEmailVerified = (user) => user.emailVerified !== false;
 
 const accountSchema = new mongoose.Schema({
     userId: {
@@ -91,6 +96,32 @@ const transactionSchema = new mongoose.Schema({
 transactionSchema.index({ from: 1, _id: -1 });
 transactionSchema.index({ to: 1, _id: -1 });
 
+const oneTimeTokenSchema = new mongoose.Schema({
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    purpose: {
+        type: String,
+        enum: ['verify_email', 'reset_password'],
+        required: true
+    },
+    tokenHash: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    expiresAt: {
+        type: Date,
+        required: true
+    },
+    usedAt: Date
+}, { timestamps: true });
+
+oneTimeTokenSchema.index({ userId: 1, purpose: 1 });
+oneTimeTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 24 * 60 * 60 });
+
 // one row per signed in device. only a hash of the refresh token is stored
 const sessionSchema = new mongoose.Schema({
     userId: {
@@ -142,8 +173,11 @@ const User = mongoose.model('User', userSchema);
 const Transaction = mongoose.model('Transaction', transactionSchema);
 const AuditLog = mongoose.model('AuditLog', auditLogSchema);
 const Session = mongoose.model('Session', sessionSchema);
+const OneTimeToken = mongoose.model('OneTimeToken', oneTimeTokenSchema);
 
 module.exports = {
+    isEmailVerified,
+    OneTimeToken,
 	User,
     Account,
     Transaction,

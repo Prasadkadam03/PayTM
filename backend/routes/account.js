@@ -2,7 +2,7 @@
 const express = require('express');
 const { authMiddleware } = require('../middleware');
 const { Account, Transaction } = require('../db');
-const { transferMoney, TransferError } = require("../services/transfer");
+const { transferMoney, assertCanSend, TransferError } = require("../services/transfer");
 const { default: mongoose } = require('mongoose');
 const zod = require("zod");
 const { asyncHandler } = require("../utils/asyncHandler");
@@ -45,6 +45,7 @@ router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (re
     const { amount, to, note } = parsed.data;
 
     try {
+        await assertCanSend(req.userId);
         const { transaction } = await transferMoney({ fromUserId: req.userId, toUserId: to, amount, note });
 
         await audit(req, "transfer", { meta: { to, amount, transactionId: transaction._id } });

@@ -2,7 +2,7 @@
 // the one place that moves money between wallets. transfers, request payments and
 // split payments all go through transferMoney so the rules live in one spot
 const mongoose = require("mongoose");
-const { Account, Transaction } = require("../db");
+const { Account, Transaction, User, isEmailVerified } = require("../db");
 
 // a business rule failure (4xx), as opposed to a database error
 class TransferError extends Error {
@@ -11,6 +11,18 @@ class TransferError extends Error {
         this.status = status;
     }
 }
+
+// checks run before any money moves on behalf of this user
+const assertCanSend = async (userId) => {
+    const user = await User.findById(userId);
+    if (!user) {
+        throw new TransferError("Please sign in", 401);
+    }
+    if (!isEmailVerified(user)) {
+        throw new TransferError("Verify your email before sending money", 403);
+    }
+    return user;
+};
 
 /**
  * moves `amount` paise from one user to another inside a single mongo transaction.
@@ -67,4 +79,4 @@ const transferMoney = async ({ fromUserId, toUserId, amount, note, type = "trans
     }
 };
 
-module.exports = { transferMoney, TransferError };
+module.exports = { transferMoney, assertCanSend, TransferError };

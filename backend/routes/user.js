@@ -2,7 +2,9 @@
 const express = require('express');
 const router = express.Router();
 const zod = require("zod");
-const { User, Account, AuditLog, Session } = require("../db");
+const { User, Account, AuditLog, Session, isEmailVerified } = require("../db");
+const { createToken, consumeToken, cancelTokens } = require("../utils/oneTimeToken");
+const { sendVerificationEmail } = require("../services/mail");
 const { audit } = require("../utils/audit");
 const { authMiddleware } = require("../middleware");
 const { startSession, rotateSession, revokeSession, revokeAllSessions, clearRefreshCookie, RefreshError } = require("../utils/session");
@@ -10,6 +12,8 @@ const bcrypt = require("bcrypt");
 const mongoose = require("mongoose");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { authLimiter, signinLimiter } = require("../rateLimit");
+
+const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
 
 const signupBody = zod.object({
     username: zod.string().trim().toLowerCase().email("Enter a valid email"),
@@ -53,6 +57,7 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
                 password: hashedPassword,
                 firstName,
                 lastName,
+                emailVerified: false,
             }], { session })
             userId = user._id;
 
@@ -67,6 +72,7 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
 
     const token = await startSession(req, res, userId);
     await audit(req, "signup", { userId });
+    await sendVerificationEmail({ username, firstName }, await createToken(userId, "verify_email", VERIFY_TTL_MS));
 
     res.json({
         message: "User created successfully",
@@ -178,7 +184,35 @@ router.get("/getUser", authMiddleware, asyncHandler(async (req, res) => {
         });
     }
 
-    res.json({ firstName: user.firstName });
+    res.json({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        username: user.username,
+        emailVerified: isEmailVerified(user)
+    });
+}));
+
+router.post("/verify-email", authLimiter, asyncHandler(async (req, res) => {
+    const record = await consumeToken(req.body?.token, "verify_email");
+    if (!record) {
+        return res.status(400).json({ message: "This link is invalid or has expired" });
+    }
+    await User.updateOne({ _id: record.userId }, { emailVerified: true });
+    await audit(req, "email_verified", { userId: record.userId });
+    res.json({ message: "Email verified" });
+}));
+
+router.post("/verify-email/resend", authMiddleware, authLimiter, asyncHandler(async (req, res) => {
+    const user = await User.findById(req.userId);
+    if (!user) {
+        return res.status(404).json({ message: "User not found" });
+    }
+    if (isEmailVerified(user)) {
+        return res.json({ message: "Email already verified" });
+    }
+    await cancelTokens(user._id, "verify_email");
+    await sendVerificationEmail(user, await createToken(user._id, "verify_email", VERIFY_TTL_MS));
+    res.json({ message: "Verification email sent" });
 }));
 
 // new access token from the refresh cookie. the cookie is rotated every time
