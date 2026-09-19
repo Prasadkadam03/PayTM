@@ -2,6 +2,7 @@
 const express = require('express');
 const { authMiddleware } = require('../middleware');
 const { Account, Transaction } = require('../db');
+const { transferMoney, TransferError } = require("../services/transfer");
 const { default: mongoose } = require('mongoose');
 const zod = require("zod");
 const { asyncHandler } = require("../utils/asyncHandler");
@@ -34,9 +35,6 @@ const transferBody = zod.object({
     note: zod.string().transform(s => s.replace(/[\u0000-\u001f\u007f]/g, "").trim()).pipe(zod.string().max(100, "Note can be at most 100 characters")).optional()
 })
 
-// a business rule failure (4xx), as opposed to a database error
-class TransferError extends Error {}
-
 router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (req, res) => {
     const parsed = transferBody.safeParse(req.body);
     if (!parsed.success) {
@@ -46,46 +44,8 @@ router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (re
     }
     const { amount, to, note } = parsed.data;
 
-    if (to === String(req.userId)) {
-        return res.status(400).json({
-            message: "You cannot send money to yourself"
-        });
-    }
-
-    const session = await mongoose.startSession();
-
     try {
-        let transaction;
-
-        // withTransaction retries the whole callback when two transfers touch the same
-        // account at once (WriteConflict), instead of failing the user's request
-        await session.withTransaction(async () => {
-            const toAccount = await Account.findOne({ userId: to }).session(session);
-
-            if (!toAccount) {
-                throw new TransferError("Invalid account");
-            }
-
-            // check and debit in one atomic update, so two parallel transfers can never overdraw
-            const debit = await Account.updateOne(
-                { userId: req.userId, balance: { $gte: amount } },
-                { $inc: { balance: -amount } }
-            ).session(session);
-
-            if (debit.modifiedCount !== 1) {
-                throw new TransferError("Insufficient balance !");
-            }
-
-            await Account.updateOne({ userId: to }, { $inc: { balance: amount } }).session(session);
-
-            // the record is part of the same mongo transaction, so it exists only if the money moved
-            [transaction] = await Transaction.create([{
-                from: req.userId,
-                to,
-                amount,
-                note: note || undefined
-            }], { session });
-        });
+        const { transaction } = await transferMoney({ fromUserId: req.userId, toUserId: to, amount, note });
 
         await audit(req, "transfer", { meta: { to, amount, transactionId: transaction._id } });
 
@@ -95,7 +55,7 @@ router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (re
         });
     } catch (err) {
         if (err instanceof TransferError) {
-            return res.status(400).json({
+            return res.status(err.status).json({
                 message: err.message
             });
         }
@@ -103,8 +63,6 @@ router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (re
         res.status(500).json({
             message: "Transfer failed, please try again"
         });
-    } finally {
-        await session.endSession();
     }
 }));
 

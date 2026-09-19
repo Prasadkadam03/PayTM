@@ -50,6 +50,11 @@ const accountSchema = new mongoose.Schema({
 });
 
 const transactionSchema = new mongoose.Schema({
+    type: {
+        type: String,
+        enum: ['transfer', 'request', 'topup'],
+        default: 'transfer'
+    },
     from: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
