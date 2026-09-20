@@ -4,7 +4,7 @@ const router = express.Router();
 const zod = require("zod");
 const { User, Account, AuditLog, Session, isEmailVerified } = require("../db");
 const { createToken, consumeToken, cancelTokens } = require("../utils/oneTimeToken");
-const { sendVerificationEmail } = require("../services/mail");
+const { sendVerificationEmail, sendPasswordResetEmail } = require("../services/mail");
 const { audit } = require("../utils/audit");
 const { authMiddleware } = require("../middleware");
 const { startSession, rotateSession, revokeSession, revokeAllSessions, clearRefreshCookie, RefreshError } = require("../utils/session");
@@ -14,16 +14,19 @@ const { asyncHandler } = require("../utils/asyncHandler");
 const { authLimiter, signinLimiter } = require("../rateLimit");
 
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
+const RESET_TTL_MS = 15 * 60 * 1000;
+
+const passwordRule = zod.string()
+    .min(8, "Password must be at least 8 characters")
+    .max(72, "Password is too long")
+    .regex(/[a-zA-Z]/, "Password must contain a letter")
+    .regex(/[0-9]/, "Password must contain a number");
 
 const signupBody = zod.object({
     username: zod.string().trim().toLowerCase().email("Enter a valid email").max(254, "Email is too long"),
     firstName: zod.string().trim().min(1, "First name is required").max(50),
     lastName: zod.string().trim().min(1, "Last name is required").max(50),
-    password: zod.string()
-        .min(8, "Password must be at least 8 characters")
-        .max(72, "Password is too long")
-        .regex(/[a-zA-Z]/, "Password must contain a letter")
-        .regex(/[0-9]/, "Password must contain a number")
+    password: passwordRule
 })
 
 router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
@@ -213,6 +216,41 @@ router.post("/verify-email/resend", authMiddleware, authLimiter, asyncHandler(as
     await cancelTokens(user._id, "verify_email");
     await sendVerificationEmail(user, await createToken(user._id, "verify_email", VERIFY_TTL_MS));
     res.json({ message: "Verification email sent" });
+}));
+
+// always the same answer, so this can't be used to find out which emails have accounts
+router.post("/password/forgot", authLimiter, asyncHandler(async (req, res) => {
+    const parsed = zod.object({ username: zod.string().trim().toLowerCase().email() }).safeParse(req.body);
+    const reply = { message: "If an account exists for that email, a reset link is on its way" };
+    if (!parsed.success) {
+        return res.json(reply);
+    }
+
+    const user = await User.findOne({ username: parsed.data.username });
+    if (user) {
+        await cancelTokens(user._id, "reset_password");
+        await sendPasswordResetEmail(user, await createToken(user._id, "reset_password", RESET_TTL_MS));
+        await audit(req, "password_reset_requested", { userId: user._id });
+    }
+    res.json(reply);
+}));
+
+router.post("/password/reset", authLimiter, asyncHandler(async (req, res) => {
+    const parsed = zod.object({ token: zod.string().max(100), password: passwordRule }).safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.issues[0].message });
+    }
+
+    const record = await consumeToken(parsed.data.token, "reset_password");
+    if (!record) {
+        return res.status(400).json({ message: "This link is invalid or has expired" });
+    }
+
+    await User.updateOne({ _id: record.userId }, { password: await bcrypt.hash(parsed.data.password, 12) });
+    // whoever had the old password may still be signed in somewhere
+    await revokeAllSessions(record.userId, "password_reset");
+    await audit(req, "password_reset", { userId: record.userId });
+    res.json({ message: "Password updated, please sign in" });
 }));
 
 // new access token from the refresh cookie. the cookie is rotated every time

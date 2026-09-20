@@ -63,10 +63,24 @@ const sendVerificationEmail = (user, token) => {
     });
 };
 
+const sendPasswordResetEmail = (user, token) => {
+    const link = `${appUrl()}/reset-password?token=${token}`;
+    return sendMailSafe({
+        to: user.username,
+        subject: "Reset your password",
+        text: `Hi ${user.firstName}, reset your password here: ${link}\nThe link expires in 15 minutes. If you did not ask for this, ignore this email.`,
+        html: layout("Reset your password", `
+            <p>Hi ${escapeHtml(user.firstName)}, we got a request to reset your password.</p>
+            ${button(link, "Choose a new password")}
+            <p style="font-size:13px;color:#64748b">The link expires in 15 minutes and signs you out everywhere once used.</p>`)
+    });
+};
+
 module.exports = {
     sendMail,
     sendMailSafe,
     sendVerificationEmail,
+    sendPasswordResetEmail,
     layout,
     button,
     escapeHtml,

@@ -6,7 +6,7 @@ import { BottomWarning } from "../Components/BottomWarning"
 import { AuthCard } from "../Components/AuthCard"
 import { useState } from "react"
 import axios from "axios"
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { toast } from "react-toastify"
 
 
@@ -44,6 +44,9 @@ export const Signin = () => {
 
             <InputBox onChange={e => setUserName(e.target.value)} label={"Email"} placeholder="prasad@gmail.com" type="email" autoComplete="email" />
             <InputBox onChange={e => setPassword(e.target.value)} label={"Password"} placeholder="••••••••" type="password" autoComplete="current-password" />
+            <div className="-mt-2 text-right">
+                <Link to="/forgot-password" className="text-xs font-medium text-brand hover:underline">Forgot password?</Link>
+            </div>
 
             <div className="mt-6">
                 <Button type="submit" label={submitting ? "Signing in..." : "Sign in"} disabled={submitting} />
