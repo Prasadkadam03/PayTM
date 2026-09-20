@@ -10,7 +10,8 @@ const userSchema = new mongoose.Schema({
         trim: true,
         lowercase: true,
         minLength: 3,
-        maxLength: 30
+        // emails can be up to 254 characters
+        maxLength: 254
     },
     password: {
         type: String,

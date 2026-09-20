@@ -16,7 +16,7 @@ const { authLimiter, signinLimiter } = require("../rateLimit");
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
 
 const signupBody = zod.object({
-    username: zod.string().trim().toLowerCase().email("Enter a valid email"),
+    username: zod.string().trim().toLowerCase().email("Enter a valid email").max(254, "Email is too long"),
     firstName: zod.string().trim().min(1, "First name is required").max(50),
     lastName: zod.string().trim().min(1, "Last name is required").max(50),
     password: zod.string()
