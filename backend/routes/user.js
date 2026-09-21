@@ -85,12 +85,12 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
 
 
 const signinBody = zod.object({
-    username: zod.string().email(),
-    password: zod.string()
+    username: zod.string().trim().toLowerCase().email(),
+    password: zod.string().max(200)
 })
 
 router.post("/signin", authLimiter, signinLimiter, asyncHandler(async (req, res) => {
-    const { success } = signinBody.safeParse(req.body)
+    const { success, data } = signinBody.safeParse(req.body)
     if (!success) {
         return res.status(400).json({
             message: "Enter a valid email and password"
@@ -98,10 +98,10 @@ router.post("/signin", authLimiter, signinLimiter, asyncHandler(async (req, res)
     }
 
     const user = await User.findOne({
-        username: req.body.username,
+        username: data.username,
     });
 
-    const match = user && await bcrypt.compare(req.body.password, user.password);
+    const match = user && await bcrypt.compare(data.password, user.password);
     if (!match) {
         if (user) {
             await audit(req, "signin_failed", { userId: user._id });
