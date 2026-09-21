@@ -76,11 +76,31 @@ const sendPasswordResetEmail = (user, token) => {
     });
 };
 
+const sendNewLoginEmail = (user, { ip, userAgent, at }) => {
+    const when = at.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" });
+    const device = userAgent || "Unknown device";
+    return sendMailSafe({
+        to: user.username,
+        subject: "New sign in to your account",
+        text: `Hi ${user.firstName}, your account was signed in from a new device.\nDevice: ${device}\nIP: ${ip}\nTime: ${when} IST\nIf this wasn't you, reset your password now: ${appUrl()}/forgot-password`,
+        html: layout("New sign in", `
+            <p>Hi ${escapeHtml(user.firstName)}, your account was signed in from a new device.</p>
+            <table style="font-size:14px;color:#334155">
+              <tr><td style="padding-right:12px">Device</td><td>${escapeHtml(device)}</td></tr>
+              <tr><td style="padding-right:12px">IP</td><td>${escapeHtml(ip)}</td></tr>
+              <tr><td style="padding-right:12px">Time</td><td>${escapeHtml(when)} IST</td></tr>
+            </table>
+            <p>If this wasn't you, reset your password now.</p>
+            ${button(`${appUrl()}/forgot-password`, "Reset password")}`)
+    });
+};
+
 module.exports = {
     sendMail,
     sendMailSafe,
     sendVerificationEmail,
     sendPasswordResetEmail,
+    sendNewLoginEmail,
     layout,
     button,
     escapeHtml,

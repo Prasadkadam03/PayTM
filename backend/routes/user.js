@@ -4,7 +4,7 @@ const router = express.Router();
 const zod = require("zod");
 const { User, Account, AuditLog, Session, isEmailVerified } = require("../db");
 const { createToken, consumeToken, cancelTokens } = require("../utils/oneTimeToken");
-const { sendVerificationEmail, sendPasswordResetEmail } = require("../services/mail");
+const { sendVerificationEmail, sendPasswordResetEmail, sendNewLoginEmail } = require("../services/mail");
 const { audit } = require("../utils/audit");
 const { authMiddleware } = require("../middleware");
 const { startSession, rotateSession, revokeSession, revokeAllSessions, clearRefreshCookie, RefreshError } = require("../utils/session");
@@ -111,13 +111,27 @@ router.post("/signin", authLimiter, signinLimiter, asyncHandler(async (req, res)
         });
     }
 
-    const token = await startSession(req, res, user._id);
-    await audit(req, "signin", { userId: user._id });
+    const token = await completeSignin(req, res, user);
 
     res.json({
         token: token
     })
 }))
+
+// last step of every sign in: session + audit + an email when the device is new
+const completeSignin = async (req, res, user) => {
+    const userAgent = String(req.headers["user-agent"] || "").slice(0, 300);
+    const knownDevice = await Session.exists({ userId: user._id, userAgent });
+
+    const token = await startSession(req, res, user._id);
+    await audit(req, "signin", { userId: user._id, meta: { newDevice: !knownDevice } });
+
+    if (!knownDevice) {
+        // not awaited: a slow mail provider must not slow down sign in
+        sendNewLoginEmail(user, { ip: req.ip, userAgent, at: new Date() });
+    }
+    return token;
+};
 
 const updateBody = zod.object({
     password: zod.string().optional(),
