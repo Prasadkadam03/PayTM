@@ -39,9 +39,9 @@ export const AppBar = () => {
             </Link>
             <div className="flex items-center gap-3">
                 <span className="hidden sm:inline text-sm text-slate-500">Hi, <span className="font-medium text-slate-900">{firstName}</span></span>
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-light text-sm font-semibold text-brand-navy">
+                <Link to="/profile" title="Profile & security" className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-light text-sm font-semibold text-brand-navy hover:ring-2 hover:ring-brand">
                     {firstName[0]?.toUpperCase()}
-                </div>
+                </Link>
                 <button onClick={signOut} className="rounded-lg px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-900">
                     Sign out
                 </button>

@@ -6,6 +6,7 @@ const { User, Account, AuditLog, Session, isEmailVerified } = require("../db");
 const { createToken, consumeToken, cancelTokens } = require("../utils/oneTimeToken");
 const { sendVerificationEmail, sendPasswordResetEmail, sendNewLoginEmail } = require("../services/mail");
 const { audit } = require("../utils/audit");
+const { hashPin, isWeakPin } = require("../services/pin");
 const { authMiddleware } = require("../middleware");
 const { startSession, rotateSession, revokeSession, revokeAllSessions, clearRefreshCookie, RefreshError } = require("../utils/session");
 const bcrypt = require("bcrypt");
@@ -205,7 +206,8 @@ router.get("/getUser", authMiddleware, asyncHandler(async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         username: user.username,
-        emailVerified: isEmailVerified(user)
+        emailVerified: isEmailVerified(user),
+        hasPin: Boolean(user.pinHash)
     });
 }));
 
@@ -265,6 +267,35 @@ router.post("/password/reset", authLimiter, asyncHandler(async (req, res) => {
     await revokeAllSessions(record.userId, "password_reset");
     await audit(req, "password_reset", { userId: record.userId });
     res.json({ message: "Password updated, please sign in" });
+}));
+
+// set or change the transaction pin. the password is asked so a stolen session can't do it
+router.post("/pin", authMiddleware, authLimiter, asyncHandler(async (req, res) => {
+    const parsed = zod.object({
+        password: zod.string().max(200),
+        pin: zod.string().regex(/^\d{4,6}$/, "PIN must be 4 to 6 digits")
+    }).safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.issues[0].message });
+    }
+    if (isWeakPin(parsed.data.pin)) {
+        return res.status(400).json({ message: "Choose a less obvious PIN (not 1111 or 1234)" });
+    }
+
+    const user = await User.findById(req.userId);
+    if (!user || !await bcrypt.compare(parsed.data.password, user.password)) {
+        // 403 not 401: a wrong password here must not look like an expired session
+        return res.status(403).json({ message: "Wrong password" });
+    }
+
+    const hadPin = Boolean(user.pinHash);
+    await User.updateOne({ _id: user._id }, {
+        pinHash: await hashPin(parsed.data.pin),
+        pinFailedAttempts: 0,
+        $unset: { pinLockedUntil: 1 }
+    });
+    await audit(req, hadPin ? "pin_changed" : "pin_set");
+    res.json({ message: hadPin ? "PIN changed" : "PIN set" });
 }));
 
 // new access token from the refresh cookie. the cookie is rotated every time

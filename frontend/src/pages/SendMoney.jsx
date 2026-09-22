@@ -1,4 +1,4 @@
-import { useSearchParams, useNavigate } from "react-router-dom"
+import { Link, useSearchParams, useNavigate } from "react-router-dom"
 import { Button } from "../Components/Button"
 import { Heading } from "../Components/Heading"
 import { AuthCard } from "../Components/AuthCard"
@@ -17,6 +17,7 @@ export const SendMoney = () => {
 
     const [amount, setAmount] = useState("");
     const [note, setNote] = useState("");
+    const [pin, setPin] = useState("");
     const [sending, setSending] = useState(false);
 
     const navigate = useNavigate();
@@ -33,7 +34,7 @@ export const SendMoney = () => {
             await toast.promise(
                 axios.post(
                     `${import.meta.env.VITE_SERVER_URL}/api/v1/account/transfer`,
-                    { to: id, amount: paise, note: note.trim() || undefined },
+                    { to: id, amount: paise, note: note.trim() || undefined, pin },
                     { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
                 ),
                 {
@@ -99,6 +100,23 @@ export const SendMoney = () => {
                     maxLength={100}
                     placeholder="What's it for? (optional)"
                     className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-brand focus:ring-4 focus:ring-brand/15"
+                />
+            </label>
+
+            <label className="mt-4 block">
+                <span className="mb-1.5 flex justify-between text-sm font-medium text-slate-700">
+                    Transaction PIN <Link to="/profile" className="font-normal text-brand hover:underline">Set / change PIN</Link>
+                </span>
+                <input
+                    onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                    value={pin}
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={6}
+                    placeholder="••••"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm tracking-[0.4em] outline-none transition placeholder:text-slate-400 focus:border-brand focus:ring-4 focus:ring-brand/15"
+                    required
                 />
             </label>
 

@@ -32,7 +32,14 @@ const userSchema = new mongoose.Schema({
     },
     // false until the email link is clicked. accounts from before verification existed
     // have no value and are treated as verified
-    emailVerified: Boolean
+    emailVerified: Boolean,
+    // transaction pin (bcrypt), asked on every payment
+    pinHash: String,
+    pinFailedAttempts: {
+        type: Number,
+        default: 0
+    },
+    pinLockedUntil: Date
 });
 
 const isEmailVerified = (user) => user.emailVerified !== false;

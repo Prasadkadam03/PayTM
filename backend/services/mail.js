@@ -95,9 +95,20 @@ const sendNewLoginEmail = (user, { ip, userAgent, at }) => {
     });
 };
 
+const sendPinLockedEmail = (user, minutes) => sendMailSafe({
+    to: user.username,
+    subject: "Your transaction PIN is locked",
+    text: `Hi ${user.firstName}, your transaction PIN was entered wrong too many times and is locked for ${minutes} minutes.\nIf this wasn't you, reset your password: ${appUrl()}/forgot-password`,
+    html: layout("Transaction PIN locked", `
+        <p>Hi ${escapeHtml(user.firstName)}, your transaction PIN was entered wrong too many times and is locked for ${minutes} minutes.</p>
+        <p>If this wasn't you, someone may know your password.</p>
+        ${button(`${appUrl()}/forgot-password`, "Reset password")}`)
+});
+
 module.exports = {
     sendMail,
     sendMailSafe,
+    sendPinLockedEmail,
     sendVerificationEmail,
     sendPasswordResetEmail,
     sendNewLoginEmail,

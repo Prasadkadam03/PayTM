@@ -3,6 +3,7 @@
 // split payments all go through transferMoney so the rules live in one spot
 const mongoose = require("mongoose");
 const { Account, Transaction, User, isEmailVerified } = require("../db");
+const { verifyPin, PinError } = require("./pin");
 
 // a business rule failure (4xx), as opposed to a database error
 class TransferError extends Error {
@@ -12,14 +13,22 @@ class TransferError extends Error {
     }
 }
 
-// checks run before any money moves on behalf of this user
-const assertCanSend = async (userId) => {
+// checks run before any money moves on behalf of this user: verified email + correct pin
+const assertCanSend = async (req, userId, pin) => {
     const user = await User.findById(userId);
     if (!user) {
         throw new TransferError("Please sign in", 401);
     }
     if (!isEmailVerified(user)) {
         throw new TransferError("Verify your email before sending money", 403);
+    }
+    try {
+        await verifyPin(req, user, pin);
+    } catch (err) {
+        if (err instanceof PinError) {
+            throw new TransferError(err.message, err.status);
+        }
+        throw err;
     }
     return user;
 };

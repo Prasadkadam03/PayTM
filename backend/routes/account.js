@@ -32,7 +32,8 @@ const transferBody = zod.object({
     // amount is in paise
     amount: zod.number().int("Invalid amount").positive("Invalid amount").max(Number.MAX_SAFE_INTEGER),
     // control characters are stripped, the rest is escaped by react when shown
-    note: zod.string().transform(s => s.replace(/[\u0000-\u001f\u007f]/g, "").trim()).pipe(zod.string().max(100, "Note can be at most 100 characters")).optional()
+    note: zod.string().transform(s => s.replace(/[\u0000-\u001f\u007f]/g, "").trim()).pipe(zod.string().max(100, "Note can be at most 100 characters")).optional(),
+    pin: zod.string({ required_error: "Enter your transaction PIN" }).max(6)
 })
 
 router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (req, res) => {
@@ -42,10 +43,10 @@ router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (re
             message: parsed.error.issues[0].message
         });
     }
-    const { amount, to, note } = parsed.data;
+    const { amount, to, note, pin } = parsed.data;
 
     try {
-        await assertCanSend(req.userId);
+        await assertCanSend(req, req.userId, pin);
         const { transaction } = await transferMoney({ fromUserId: req.userId, toUserId: to, amount, note });
 
         await audit(req, "transfer", { meta: { to, amount, transactionId: transaction._id } });
