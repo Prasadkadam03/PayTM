@@ -38,11 +38,36 @@ const assertCanSend = async (req, userId, pin) => {
  * `inTransaction(session, transaction)` lets a caller do extra writes that must commit
  * or roll back together with the money (e.g. marking a request as paid).
  */
-const transferMoney = async ({ fromUserId, toUserId, amount, note, type = "transfer", inTransaction }) => {
+const transferMoney = async ({ fromUserId, toUserId, amount, note, type = "transfer", idempotencyKey, inTransaction }) => {
     if (String(toUserId) === String(fromUserId)) {
         throw new TransferError("You cannot send money to yourself");
     }
 
+    try {
+        return await moveMoney({ fromUserId, toUserId, amount, note, type, idempotencyKey, inTransaction });
+    } catch (err) {
+        // a parallel request with the same key committed first: answer with its result
+        if (idempotencyKey && err.code === 11000 && err.keyPattern?.idempotencyKey) {
+            const replay = await findReplay(fromUserId, idempotencyKey, { toUserId, amount });
+            if (replay) return replay;
+        }
+        throw err;
+    }
+};
+
+// the earlier result for this Idempotency-Key, or null if the key is new.
+// the same key with different details is a client bug, not a retry
+const findReplay = async (fromUserId, idempotencyKey, { toUserId, amount }) => {
+    if (!idempotencyKey) return null;
+    const existing = await Transaction.findOne({ from: fromUserId, idempotencyKey });
+    if (!existing) return null;
+    if (String(existing.to) !== String(toUserId) || existing.amount !== amount) {
+        throw new TransferError("This Idempotency-Key was already used for a different payment", 409);
+    }
+    return { transaction: existing, replay: true };
+};
+
+const moveMoney = async ({ fromUserId, toUserId, amount, note, type, idempotencyKey, inTransaction }) => {
     const session = await mongoose.startSession();
     try {
         let transaction;
@@ -74,7 +99,8 @@ const transferMoney = async ({ fromUserId, toUserId, amount, note, type = "trans
                 from: fromUserId,
                 to: toUserId,
                 amount,
-                note: note || undefined
+                note: note || undefined,
+                idempotencyKey: idempotencyKey || undefined
             }], { session });
 
             if (inTransaction) {
@@ -88,4 +114,4 @@ const transferMoney = async ({ fromUserId, toUserId, amount, note, type = "trans
     }
 };
 
-module.exports = { transferMoney, assertCanSend, TransferError };
+module.exports = { transferMoney, findReplay, assertCanSend, TransferError };

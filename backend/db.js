@@ -100,6 +100,13 @@ const transactionSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+// same Idempotency-Key from the same sender = the same payment, even if retried in parallel
+transactionSchema.add({ idempotencyKey: String });
+transactionSchema.index(
+    { from: 1, idempotencyKey: 1 },
+    { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string" } } }
+);
+
 // history is read newest first for one user, as sender or receiver
 transactionSchema.index({ from: 1, _id: -1 });
 transactionSchema.index({ to: 1, _id: -1 });

@@ -2,7 +2,7 @@
 const express = require('express');
 const { authMiddleware } = require('../middleware');
 const { Account, Transaction } = require('../db');
-const { transferMoney, assertCanSend, TransferError } = require("../services/transfer");
+const { transferMoney, findReplay, assertCanSend, TransferError } = require("../services/transfer");
 const { default: mongoose } = require('mongoose');
 const zod = require("zod");
 const { asyncHandler } = require("../utils/asyncHandler");
@@ -45,15 +45,35 @@ router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (re
     }
     const { amount, to, note, pin } = parsed.data;
 
-    try {
-        await assertCanSend(req, req.userId, pin);
-        const { transaction } = await transferMoney({ fromUserId: req.userId, toUserId: to, amount, note });
+    const idempotencyKey = req.get("Idempotency-Key");
+    if (idempotencyKey !== undefined && !/^[A-Za-z0-9-]{8,64}$/.test(idempotencyKey)) {
+        return res.status(400).json({
+            message: "Invalid Idempotency-Key"
+        });
+    }
 
-        await audit(req, "transfer", { meta: { to, amount, transactionId: transaction._id } });
+    try {
+        // a retry of a payment that already went through gets the same answer, nothing moves twice
+        const replay = await findReplay(req.userId, idempotencyKey, { toUserId: to, amount });
+        if (replay) {
+            return res.json({
+                message: "Transfer successful",
+                transactionId: replay.transaction._id,
+                replayed: true
+            });
+        }
+
+        await assertCanSend(req, req.userId, pin);
+        const { transaction, replay: raced } = await transferMoney({ fromUserId: req.userId, toUserId: to, amount, note, idempotencyKey });
+
+        if (!raced) {
+            await audit(req, "transfer", { meta: { to, amount, transactionId: transaction._id } });
+        }
 
         res.json({
             message: "Transfer successful",
-            transactionId: transaction._id
+            transactionId: transaction._id,
+            ...(raced ? { replayed: true } : {})
         });
     } catch (err) {
         if (err instanceof TransferError) {

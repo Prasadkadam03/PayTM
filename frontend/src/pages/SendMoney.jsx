@@ -7,6 +7,10 @@ import axios from "axios"
 import { toast } from "react-toastify";
 import { formatINR, toPaise } from "../utils/money";
 
+// randomUUID only exists on https / localhost, getRandomValues works everywhere
+const newKey = () => crypto.randomUUID?.()
+    ?? Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join("");
+
 export const SendMoney = () => {
 
     const [searchParams] = useSearchParams();
@@ -18,6 +22,8 @@ export const SendMoney = () => {
     const [amount, setAmount] = useState("");
     const [note, setNote] = useState("");
     const [pin, setPin] = useState("");
+    // one key per payment attempt: a double click or network retry can never pay twice
+    const [idempotencyKey] = useState(newKey);
     const [sending, setSending] = useState(false);
 
     const navigate = useNavigate();
@@ -35,7 +41,7 @@ export const SendMoney = () => {
                 axios.post(
                     `${import.meta.env.VITE_SERVER_URL}/api/v1/account/transfer`,
                     { to: id, amount: paise, note: note.trim() || undefined, pin },
-                    { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+                    { headers: { Authorization: `Bearer ${localStorage.getItem("token")}`, "Idempotency-Key": idempotencyKey } }
                 ),
                 {
                     pending: "Sending money...",
