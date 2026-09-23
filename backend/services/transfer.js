@@ -13,6 +13,36 @@ class TransferError extends Error {
     }
 }
 
+// all in paise, overridable from env
+const limits = () => ({
+    perTransaction: Number(process.env.TXN_MAX_PAISE) || 10000_00,   // ₹10,000
+    perDay: Number(process.env.DAILY_MAX_PAISE) || 50000_00,         // ₹50,000 rolling 24h
+    perMinute: Number(process.env.TXN_PER_MIN) || 5
+});
+
+const rupees = (paise) => "₹" + (paise / 100).toLocaleString("en-IN");
+
+// runs inside the payment's mongo transaction. two parallel payments from the same user
+// both write the sender's account, so mongo makes one of them retry and re-count
+const assertWithinLimits = async (session, fromUserId, amount) => {
+    const { perDay, perMinute } = limits();
+    const now = Date.now();
+
+    const [sentToday] = await Transaction.aggregate([
+        { $match: { from: new mongoose.Types.ObjectId(String(fromUserId)), status: "success", createdAt: { $gte: new Date(now - 24 * 60 * 60 * 1000) } } },
+        { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]).session(session);
+    const total = sentToday?.total || 0;
+    if (total + amount > perDay) {
+        throw new TransferError(`Daily limit is ${rupees(perDay)}. You can send ${rupees(Math.max(perDay - total, 0))} more today`);
+    }
+
+    const lastMinute = await Transaction.countDocuments({ from: fromUserId, createdAt: { $gte: new Date(now - 60 * 1000) } }).session(session);
+    if (lastMinute >= perMinute) {
+        throw new TransferError("Too many payments in a minute, please wait", 429);
+    }
+};
+
 // checks run before any money moves on behalf of this user: verified email + correct pin
 const assertCanSend = async (req, userId, pin) => {
     const user = await User.findById(userId);
@@ -41,6 +71,9 @@ const assertCanSend = async (req, userId, pin) => {
 const transferMoney = async ({ fromUserId, toUserId, amount, note, type = "transfer", idempotencyKey, inTransaction }) => {
     if (String(toUserId) === String(fromUserId)) {
         throw new TransferError("You cannot send money to yourself");
+    }
+    if (amount > limits().perTransaction) {
+        throw new TransferError(`You can send at most ${rupees(limits().perTransaction)} in one payment`);
     }
 
     try {
@@ -80,6 +113,8 @@ const moveMoney = async ({ fromUserId, toUserId, amount, note, type, idempotency
             if (!toAccount) {
                 throw new TransferError("Invalid account");
             }
+
+            await assertWithinLimits(session, fromUserId, amount);
 
             // check and debit in one atomic update, so two parallel transfers can never overdraw
             const debit = await Account.updateOne(
