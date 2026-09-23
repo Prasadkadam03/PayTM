@@ -39,7 +39,14 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    pinLockedUntil: Date
+    pinLockedUntil: Date,
+    // two factor auth. secrets are aes-256-gcm encrypted, backup codes bcrypt hashed
+    twoFactorEnabled: Boolean,
+    twoFactorSecret: String,
+    twoFactorPendingSecret: String,
+    twoFactorBackupCodes: [String],
+    // last used 30s step, so a code can't be used twice
+    totpLastStep: Number
 });
 
 const isEmailVerified = (user) => user.emailVerified !== false;

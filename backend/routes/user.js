@@ -7,12 +7,13 @@ const { createToken, consumeToken, cancelTokens } = require("../utils/oneTimeTok
 const { sendVerificationEmail, sendPasswordResetEmail, sendNewLoginEmail } = require("../services/mail");
 const { audit } = require("../utils/audit");
 const { hashPin, isWeakPin } = require("../services/pin");
+const { startSetup, checkCode, newBackupCodes, verifySecondFactor, signMfaToken, verifyMfaToken } = require("../services/totp");
 const { authMiddleware } = require("../middleware");
 const { startSession, rotateSession, revokeSession, revokeAllSessions, clearRefreshCookie, RefreshError } = require("../utils/session");
 const bcrypt = require("bcrypt");
 const mongoose = require("mongoose");
 const { asyncHandler } = require("../utils/asyncHandler");
-const { authLimiter, signinLimiter } = require("../rateLimit");
+const { authLimiter, signinLimiter, mfaLimiter, accountLimiter, refreshLimiter } = require("../rateLimit");
 
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
 const RESET_TTL_MS = 15 * 60 * 1000;
@@ -112,6 +113,15 @@ router.post("/signin", authLimiter, signinLimiter, asyncHandler(async (req, res)
         });
     }
 
+    // password was right, but the authenticator code is still needed
+    if (user.twoFactorEnabled) {
+        await audit(req, "signin_password_ok", { userId: user._id });
+        return res.json({
+            mfaRequired: true,
+            mfaToken: signMfaToken(user._id)
+        });
+    }
+
     const token = await completeSignin(req, res, user);
 
     res.json({
@@ -207,7 +217,9 @@ router.get("/getUser", authMiddleware, asyncHandler(async (req, res) => {
         lastName: user.lastName,
         username: user.username,
         emailVerified: isEmailVerified(user),
-        hasPin: Boolean(user.pinHash)
+        hasPin: Boolean(user.pinHash),
+        twoFactorEnabled: Boolean(user.twoFactorEnabled),
+        backupCodesLeft: user.twoFactorBackupCodes?.length || 0
     });
 }));
 
@@ -221,7 +233,7 @@ router.post("/verify-email", authLimiter, asyncHandler(async (req, res) => {
     res.json({ message: "Email verified" });
 }));
 
-router.post("/verify-email/resend", authMiddleware, authLimiter, asyncHandler(async (req, res) => {
+router.post("/verify-email/resend", authMiddleware, accountLimiter, asyncHandler(async (req, res) => {
     const user = await User.findById(req.userId);
     if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -269,8 +281,88 @@ router.post("/password/reset", authLimiter, asyncHandler(async (req, res) => {
     res.json({ message: "Password updated, please sign in" });
 }));
 
+// second step of signin when 2fa is on: authenticator code or a backup code
+router.post("/2fa/verify", authLimiter, mfaLimiter, asyncHandler(async (req, res) => {
+    let userId;
+    try {
+        userId = verifyMfaToken(String(req.body?.mfaToken)).userId;
+    } catch {
+        return res.status(400).json({ message: "Sign in again, this step expired" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user?.twoFactorEnabled || !await verifySecondFactor(user, req.body?.code)) {
+        await audit(req, "2fa_failed", { userId });
+        return res.status(400).json({ message: "Invalid code" });
+    }
+
+    const token = await completeSignin(req, res, user);
+    res.json({ token });
+}));
+
+// password + current password check shared by the sensitive 2fa endpoints
+const checkPassword = async (req) => {
+    const user = await User.findById(req.userId);
+    const ok = user && typeof req.body?.password === "string" && await bcrypt.compare(req.body.password, user.password);
+    return ok ? user : null;
+};
+
+// step 1: a new secret (stored as pending) + qr code for the authenticator app
+router.post("/2fa/setup", authMiddleware, accountLimiter, asyncHandler(async (req, res) => {
+    const user = await checkPassword(req);
+    if (!user) {
+        return res.status(403).json({ message: "Wrong password" });
+    }
+    if (user.twoFactorEnabled) {
+        return res.status(409).json({ message: "Two factor is already on" });
+    }
+    res.json(await startSetup(user));
+}));
+
+// step 2: the first code from the app proves it was set up right. returns backup codes once
+router.post("/2fa/enable", authMiddleware, accountLimiter, asyncHandler(async (req, res) => {
+    const user = await User.findById(req.userId);
+    if (!user?.twoFactorPendingSecret) {
+        return res.status(400).json({ message: "Start the setup first" });
+    }
+    const step = checkCode(user.twoFactorPendingSecret, String(req.body?.code || ""), user.totpLastStep);
+    if (step === null) {
+        return res.status(400).json({ message: "Invalid code, check the time on your phone" });
+    }
+
+    const { codes, hashes } = await newBackupCodes();
+    await User.updateOne({ _id: user._id }, {
+        twoFactorEnabled: true,
+        twoFactorSecret: user.twoFactorPendingSecret,
+        twoFactorBackupCodes: hashes,
+        totpLastStep: step,
+        $unset: { twoFactorPendingSecret: 1 }
+    });
+    await audit(req, "2fa_enabled");
+    res.json({ message: "Two factor is on", backupCodes: codes });
+}));
+
+router.post("/2fa/disable", authMiddleware, accountLimiter, asyncHandler(async (req, res) => {
+    const user = await checkPassword(req);
+    if (!user) {
+        return res.status(403).json({ message: "Wrong password" });
+    }
+    if (!user.twoFactorEnabled) {
+        return res.json({ message: "Two factor is already off" });
+    }
+    if (!await verifySecondFactor(user, req.body?.code)) {
+        return res.status(400).json({ message: "Invalid code" });
+    }
+    await User.updateOne({ _id: user._id }, {
+        twoFactorEnabled: false,
+        $unset: { twoFactorSecret: 1, twoFactorPendingSecret: 1, twoFactorBackupCodes: 1, totpLastStep: 1 }
+    });
+    await audit(req, "2fa_disabled");
+    res.json({ message: "Two factor is off" });
+}));
+
 // set or change the transaction pin. the password is asked so a stolen session can't do it
-router.post("/pin", authMiddleware, authLimiter, asyncHandler(async (req, res) => {
+router.post("/pin", authMiddleware, accountLimiter, asyncHandler(async (req, res) => {
     const parsed = zod.object({
         password: zod.string().max(200),
         pin: zod.string().regex(/^\d{4,6}$/, "PIN must be 4 to 6 digits")
@@ -299,7 +391,7 @@ router.post("/pin", authMiddleware, authLimiter, asyncHandler(async (req, res) =
 }));
 
 // new access token from the refresh cookie. the cookie is rotated every time
-router.post("/refresh", authLimiter, asyncHandler(async (req, res) => {
+router.post("/refresh", refreshLimiter, asyncHandler(async (req, res) => {
     try {
         const { accessToken } = await rotateSession(req, res);
         res.json({ token: accessToken });
