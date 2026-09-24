@@ -144,22 +144,20 @@ const completeSignin = async (req, res, user) => {
     return token;
 };
 
+// name only. the password has its own route that asks for the current one
 const updateBody = zod.object({
-    password: zod.string().optional(),
-    firstName: zod.string().optional(),
-    lastName: zod.string().optional(),
-})
+    firstName: zod.string().trim().min(1, "First name is required").max(50).optional(),
+    lastName: zod.string().trim().min(1, "Last name is required").max(50).optional(),
+}).strict()
 
 router.put("/", authMiddleware, asyncHandler(async (req, res) => {
-    const { success, data } = updateBody.safeParse(req.body)
+    const { success, data, error } = updateBody.safeParse(req.body)
     if (!success) {
         return res.status(400).json({
-            message: "Error while updating information"
+            message: error.issues[0].code === "unrecognized_keys"
+                ? "Only your name can be changed here"
+                : error.issues[0].message
         })
-    }
-
-    if (data.password) {
-        data.password = await bcrypt.hash(data.password, 10);
     }
 
     await User.updateOne({ _id: req.userId }, data)
@@ -167,6 +165,24 @@ router.put("/", authMiddleware, asyncHandler(async (req, res) => {
     res.json({
         message: "Updated successfully"
     })
+}))
+
+// needs the current password. every other device is signed out afterwards
+router.post("/password/change", authMiddleware, accountLimiter, asyncHandler(async (req, res) => {
+    const parsed = zod.object({ currentPassword: zod.string().max(200), newPassword: passwordRule }).safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.issues[0].message });
+    }
+
+    const user = await User.findById(req.userId);
+    if (!user || !await bcrypt.compare(parsed.data.currentPassword, user.password)) {
+        return res.status(403).json({ message: "Current password is wrong" });
+    }
+
+    await User.updateOne({ _id: user._id }, { password: await bcrypt.hash(parsed.data.newPassword, 12) });
+    await revokeAllSessions(user._id, "password_changed", req.sessionId);
+    await audit(req, "password_changed");
+    res.json({ message: "Password changed, other devices were signed out" });
 }))
 
 const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
