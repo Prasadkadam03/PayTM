@@ -61,6 +61,91 @@ const PinCard = ({ hasPin, onSaved }) => {
     </Card>
 };
 
+const TwoFactorCard = ({ me, onChanged }) => {
+    const [password, setPassword] = useState("");
+    const [code, setCode] = useState("");
+    const [setup, setSetup] = useState(null);
+    const [backupCodes, setBackupCodes] = useState(null);
+    const [busy, setBusy] = useState(false);
+
+    const run = async (fn) => {
+        setBusy(true);
+        try {
+            await fn();
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Something went wrong");
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const start = (e) => { e.preventDefault(); run(async () => {
+        const response = await axios.post(api + "/2fa/setup", { password }, auth());
+        setSetup(response.data);
+    }); };
+
+    const enable = (e) => { e.preventDefault(); run(async () => {
+        const response = await axios.post(api + "/2fa/enable", { code }, auth());
+        toast.success(response.data.message);
+        setBackupCodes(response.data.backupCodes);
+        setSetup(null);
+        onChanged();
+    }); };
+
+    const disable = (e) => { e.preventDefault(); run(async () => {
+        const response = await axios.post(api + "/2fa/disable", { password, code }, auth());
+        toast.success(response.data.message);
+        e.target.reset();
+        onChanged();
+    }); };
+
+    if (backupCodes) {
+        return <Card title="Save your backup codes" subtitle="Each code works once if you lose your phone. They won't be shown again.">
+            <ul className="grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-4 font-mono text-sm">
+                {backupCodes.map(c => <li key={c}>{c}</li>)}
+            </ul>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+                <Button variant="secondary" label="Copy" onPress={() => navigator.clipboard?.writeText(backupCodes.join("\n")).then(() => toast.success("Copied"))} />
+                <Button label="I saved them" onPress={() => setBackupCodes(null)} />
+            </div>
+        </Card>
+    }
+
+    if (me.twoFactorEnabled) {
+        return <Card title="Two-step verification is on" subtitle={`Sign in asks for a code from your authenticator app. ${me.backupCodesLeft} backup codes left.`}>
+            <form onSubmit={disable} className="grid sm:grid-cols-2 gap-x-3">
+                <InputBox onChange={e => setPassword(e.target.value)} label="Password" placeholder="••••••••" type="password" autoComplete="current-password" />
+                <InputBox onChange={e => setCode(e.target.value.trim())} label="Code or backup code" placeholder="123 456" autoComplete="one-time-code" />
+                <div className="sm:col-span-2">
+                    <Button variant="secondary" type="submit" label={busy ? "Turning off..." : "Turn off"} disabled={busy} />
+                </div>
+            </form>
+        </Card>
+    }
+
+    if (setup) {
+        return <Card title="Scan with your authenticator app" subtitle="Google Authenticator, Authy or any TOTP app. Then enter the 6 digit code it shows.">
+            <div className="flex flex-col sm:flex-row gap-5 items-center">
+                <img src={setup.qr} alt="QR code for your authenticator app" className="h-44 w-44 rounded-xl border border-slate-200" />
+                <form onSubmit={enable} className="w-full">
+                    <p className="mb-3 text-xs text-slate-500 break-all">Can't scan? Enter this key: <span className="font-mono text-slate-900">{setup.secret}</span></p>
+                    <InputBox onChange={e => setCode(e.target.value.trim())} label="6 digit code" placeholder="123 456" autoComplete="one-time-code" />
+                    <Button type="submit" label={busy ? "Checking..." : "Turn on"} disabled={busy} />
+                </form>
+            </div>
+        </Card>
+    }
+
+    return <Card title="Two-step verification" subtitle="Ask for a code from your phone every time you sign in.">
+        <form onSubmit={start} className="grid sm:grid-cols-2 gap-x-3 items-end">
+            <InputBox onChange={e => setPassword(e.target.value)} label="Password" placeholder="••••••••" type="password" autoComplete="current-password" />
+            <div className="mb-4">
+                <Button type="submit" label={busy ? "Starting..." : "Set up"} disabled={busy} />
+            </div>
+        </form>
+    </Card>
+};
+
 export const Profile = () => {
     const [me, setMe] = useState(null);
 
@@ -80,6 +165,7 @@ export const Profile = () => {
             {me && <p className="mt-1 text-sm text-slate-500">{me.firstName} {me.lastName} · {me.username}</p>}
 
             {me && <PinCard hasPin={me.hasPin} onSaved={load} />}
+            {me && <TwoFactorCard me={me} onChanged={load} />}
         </main>
     </div>
 };

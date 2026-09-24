@@ -15,27 +15,62 @@ export const Signin = () => {
     const [username, setUserName] = useState("");
     const [password, setPassword] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    // set when the account has two factor on: the password was right, the code is next
+    const [mfaToken, setMfaToken] = useState(null);
+    const [code, setCode] = useState("");
 
     const navigate = useNavigate();
+
+    const signedIn = (token) => {
+        localStorage.setItem("token", token);
+        toast.success("Welcome back!");
+        navigate("/dashboard");
+    };
 
     const onSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
         try {
-            const response = await toast.promise(
-                axios.post(import.meta.env.VITE_SERVER_URL + "/api/v1/user/signin", { username, password }),
-                {
-                    pending: "Signing in...",
-                    success: "Welcome back!",
-                    error: "Invalid credentials, please try again",
-                }
-            );
-            localStorage.setItem("token", response.data.token);
-            navigate("/dashboard");
-        } catch {
+            const response = await axios.post(import.meta.env.VITE_SERVER_URL + "/api/v1/user/signin", { username, password });
+            if (response.data.mfaRequired) {
+                setMfaToken(response.data.mfaToken);
+                setSubmitting(false);
+                return;
+            }
+            signedIn(response.data.token);
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Invalid credentials, please try again");
             setSubmitting(false);
         }
     };
+
+    const onVerify = async (e) => {
+        e.preventDefault();
+        setSubmitting(true);
+        try {
+            const response = await axios.post(import.meta.env.VITE_SERVER_URL + "/api/v1/user/2fa/verify", { mfaToken, code });
+            signedIn(response.data.token);
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Invalid code");
+            // the 5 minute step expired: start over with the password
+            if (err.response?.data?.message?.startsWith("Sign in again")) setMfaToken(null);
+            setSubmitting(false);
+        }
+    };
+
+    if (mfaToken) {
+        return <AuthCard>
+            <form onSubmit={onVerify}>
+                <Heading label={"Two-step verification"} />
+                <SubHeading label={"Enter the 6 digit code from your authenticator app, or one of your backup codes"} />
+                <InputBox onChange={e => setCode(e.target.value.trim())} label={"Code"} placeholder="123 456" autoComplete="one-time-code" />
+                <div className="mt-6 space-y-3">
+                    <Button type="submit" label={submitting ? "Checking..." : "Verify"} disabled={submitting} />
+                    <Button variant="secondary" onPress={() => { setMfaToken(null); setCode(""); setUserName(""); setPassword(""); }} label={"Back"} />
+                </div>
+            </form>
+        </AuthCard>
+    }
 
     return <AuthCard>
         <form onSubmit={onSubmit}>
