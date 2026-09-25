@@ -7,6 +7,7 @@ const { default: mongoose } = require('mongoose');
 const zod = require("zod");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { audit } = require("../utils/audit");
+const { writeReceipt } = require("../services/receipt");
 const { transferLimiter } = require("../rateLimit");
 
 const router = express.Router();
@@ -129,6 +130,7 @@ router.get("/transactions", authMiddleware, asyncHandler(async (req, res) => {
             const other = sent ? t.to : t.from;
             return {
                 _id: t._id,
+                type: t.type || "transfer",
                 direction: sent ? "sent" : "received",
                 amount: t.amount,
                 note: t.note || "",
@@ -141,6 +143,49 @@ router.get("/transactions", authMiddleware, asyncHandler(async (req, res) => {
         }),
         nextCursor: hasMore ? page[page.length - 1]._id : null
     });
+}));
+
+// a transaction the signed in user took part in, or null. anyone else gets a 404,
+// which doesn't even confirm the transaction exists
+const findMyTransaction = async (req, id) => {
+    if (!/^[a-f\d]{24}$/i.test(id)) return null;
+    return Transaction.findOne({ _id: id, $or: [{ from: req.userId }, { to: req.userId }] })
+        .populate("from", "firstName lastName")
+        .populate("to", "firstName lastName")
+        .lean();
+};
+
+const person = (user) => (user ? { _id: user._id, firstName: user.firstName, lastName: user.lastName } : null);
+
+router.get("/transactions/:id", authMiddleware, asyncHandler(async (req, res) => {
+    const t = await findMyTransaction(req, req.params.id);
+    if (!t) {
+        return res.status(404).json({ message: "Transaction not found" });
+    }
+    res.json({
+        transaction: {
+            _id: t._id,
+            type: t.type || "transfer",
+            direction: String(t.from?._id) === String(req.userId) ? "sent" : "received",
+            amount: t.amount,
+            note: t.note || "",
+            status: t.status,
+            createdAt: t.createdAt,
+            from: person(t.from),
+            to: person(t.to)
+        }
+    });
+}));
+
+router.get("/transactions/:id/receipt", authMiddleware, asyncHandler(async (req, res) => {
+    const t = await findMyTransaction(req, req.params.id);
+    if (!t) {
+        return res.status(404).json({ message: "Transaction not found" });
+    }
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="paytm-receipt-${t._id}.pdf"`);
+    res.setHeader("Cache-Control", "private, no-store");
+    writeReceipt(t, res);
 }));
 
 module.exports = router;

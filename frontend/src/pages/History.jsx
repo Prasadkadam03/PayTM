@@ -132,18 +132,20 @@ function Row({ transaction: t }) {
     const name = t.counterparty ? `${t.counterparty.firstName} ${t.counterparty.lastName}` : "Deleted user";
     const time = new Date(t.createdAt).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
 
-    return <li className="flex items-center justify-between gap-3 px-5 py-3">
-        <div className="flex min-w-0 items-center gap-3">
-            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${sent ? "bg-slate-100 text-slate-600" : "bg-emerald-50 text-emerald-700"}`}>
-                {sent ? "↑" : "↓"}
+    return <li>
+        <Link to={"/transactions/" + t._id} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-slate-50">
+            <div className="flex min-w-0 items-center gap-3">
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${sent ? "bg-slate-100 text-slate-600" : "bg-emerald-50 text-emerald-700"}`}>
+                    {sent ? "↑" : "↓"}
+                </div>
+                <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{t.type === "topup" ? "Added money to wallet" : `${sent ? "Paid to" : "Received from"} ${name}`}</p>
+                    <p className="truncate text-xs text-slate-500">{time}{t.note ? ` · ${t.note}` : ""}</p>
+                </div>
             </div>
-            <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{sent ? "Paid to" : "Received from"} {name}</p>
-                <p className="truncate text-xs text-slate-500">{time}{t.note ? ` · ${t.note}` : ""}</p>
-            </div>
-        </div>
-        <span className={`shrink-0 text-sm font-semibold ${sent ? "text-slate-900" : "text-emerald-600"}`}>
-            {sent ? "−" : "+"}{formatINR(t.amount)}
-        </span>
+            <span className={`shrink-0 text-sm font-semibold ${sent ? "text-slate-900" : "text-emerald-600"}`}>
+                {sent ? "−" : "+"}{formatINR(t.amount)}
+            </span>
+        </Link>
     </li>
 }
