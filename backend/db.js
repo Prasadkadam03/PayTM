@@ -118,6 +118,55 @@ transactionSchema.index(
 transactionSchema.index({ from: 1, _id: -1 });
 transactionSchema.index({ to: 1, _id: -1 });
 
+// "please pay me": from = the requester, to = the person asked to pay
+const moneyRequestSchema = new mongoose.Schema({
+    from: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    to: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    // paise
+    amount: {
+        type: Number,
+        required: true,
+        min: 1,
+        validate: {
+            validator: Number.isInteger,
+            message: "amount must be a whole number of paise"
+        }
+    },
+    note: {
+        type: String,
+        trim: true,
+        maxLength: 100
+    },
+    status: {
+        type: String,
+        enum: ['pending', 'paid', 'declined', 'cancelled', 'expired'],
+        default: 'pending'
+    },
+    expiresAt: {
+        type: Date,
+        required: true
+    },
+    transactionId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Transaction'
+    },
+    splitId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Split'
+    }
+}, { timestamps: true });
+
+moneyRequestSchema.index({ to: 1, status: 1, _id: -1 });
+moneyRequestSchema.index({ from: 1, status: 1, _id: -1 });
+
 const oneTimeTokenSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -196,10 +245,12 @@ const Transaction = mongoose.model('Transaction', transactionSchema);
 const AuditLog = mongoose.model('AuditLog', auditLogSchema);
 const Session = mongoose.model('Session', sessionSchema);
 const OneTimeToken = mongoose.model('OneTimeToken', oneTimeTokenSchema);
+const MoneyRequest = mongoose.model('MoneyRequest', moneyRequestSchema);
 
 module.exports = {
     isEmailVerified,
     OneTimeToken,
+    MoneyRequest,
 	User,
     Account,
     Transaction,

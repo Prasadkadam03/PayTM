@@ -70,6 +70,15 @@ const refreshLimiter = rateLimit({
     message: message("Too many attempts, please try again in 15 minutes")
 });
 
+// asking people for money: stops one user spamming requests. runs after authMiddleware
+const requestLimiter = rateLimit({
+    ...common,
+    windowMs: 60 * 60 * 1000,
+    limit: 30,
+    keyGenerator: (req) => "req:" + String(req.userId),
+    message: message("Too many requests sent, please try again later")
+});
+
 // transfers are limited per user, so it must run after authMiddleware
 const transferLimiter = rateLimit({
     ...common,
@@ -85,5 +94,6 @@ module.exports = {
     mfaLimiter,
     accountLimiter,
     refreshLimiter,
+    requestLimiter,
     transferLimiter
 }
