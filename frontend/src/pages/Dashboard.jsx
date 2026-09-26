@@ -39,9 +39,14 @@ export const Dashboard = () => {
       <section className="rounded-2xl bg-brand-navy p-6 sm:p-8 text-white">
         <div className="flex items-center justify-between">
           <p className="text-sm text-white/70">Available balance</p>
-          <Link to="/history" className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/20">
-            History →
-          </Link>
+          <div className="flex gap-2">
+            <Link to="/split" className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/20">
+              Split bill
+            </Link>
+            <Link to="/history" className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/20">
+              History →
+            </Link>
+          </div>
         </div>
         <div className="mt-2">
           {loading

@@ -167,6 +167,49 @@ const moneyRequestSchema = new mongoose.Schema({
 moneyRequestSchema.index({ to: 1, status: 1, _id: -1 });
 moneyRequestSchema.index({ from: 1, status: 1, _id: -1 });
 
+// one bill shared with friends. the creator already paid, everyone else gets a MoneyRequest
+const splitSchema = new mongoose.Schema({
+    creator: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+        index: true
+    },
+    // paise
+    total: {
+        type: Number,
+        required: true,
+        min: 1
+    },
+    creatorShare: {
+        type: Number,
+        required: true,
+        min: 0
+    },
+    note: {
+        type: String,
+        trim: true,
+        maxLength: 100
+    },
+    participants: [{
+        _id: false,
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: true
+        },
+        share: {
+            type: Number,
+            required: true,
+            min: 1
+        },
+        requestId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'MoneyRequest'
+        }
+    }]
+}, { timestamps: true });
+
 const oneTimeTokenSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -246,11 +289,13 @@ const AuditLog = mongoose.model('AuditLog', auditLogSchema);
 const Session = mongoose.model('Session', sessionSchema);
 const OneTimeToken = mongoose.model('OneTimeToken', oneTimeTokenSchema);
 const MoneyRequest = mongoose.model('MoneyRequest', moneyRequestSchema);
+const Split = mongoose.model('Split', splitSchema);
 
 module.exports = {
     isEmailVerified,
     OneTimeToken,
     MoneyRequest,
+    Split,
 	User,
     Account,
     Transaction,

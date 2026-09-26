@@ -9,11 +9,9 @@ const { asyncHandler } = require("../utils/asyncHandler");
 const { audit } = require("../utils/audit");
 const { transferMoney, assertCanSend, TransferError } = require("../services/transfer");
 const { transferLimiter, requestLimiter } = require("../rateLimit");
+const { REQUEST_TTL_MS, MAX_OPEN_REQUESTS, expireOld } = require("../services/requestRules");
 
 const router = express.Router();
-
-const REQUEST_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const MAX_OPEN_REQUESTS = 20;
 
 const objectId = zod.string().regex(/^[a-f\d]{24}$/i, "Invalid user");
 const cleanNote = zod.string()
@@ -27,12 +25,6 @@ const createBody = zod.object({
     amount: zod.number().int("Invalid amount").positive("Invalid amount").max(Number.MAX_SAFE_INTEGER),
     note: cleanNote
 });
-
-// pending requests past their date become expired. done on read, no cron needed
-const expireOld = (filter) => MoneyRequest.updateMany(
-    { ...filter, status: "pending", expiresAt: { $lte: new Date() } },
-    { status: "expired" }
-);
 
 router.post("/", authMiddleware, requestLimiter, asyncHandler(async (req, res) => {
     const parsed = createBody.safeParse(req.body);
