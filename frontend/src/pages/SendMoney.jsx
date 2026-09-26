@@ -18,6 +18,8 @@ export const SendMoney = () => {
     const id = searchParams.get("id");
     const fname = searchParams.get("fname") || "";
     const lname = searchParams.get("lname") || "";
+    // same form asks the other person for money instead of paying them
+    const isRequest = searchParams.get("mode") === "request";
 
     const [amount, setAmount] = useState("");
     const [note, setNote] = useState("");
@@ -36,16 +38,23 @@ export const SendMoney = () => {
             return;
         }
         setSending(true);
+        const call = isRequest
+            ? axios.post(
+                `${import.meta.env.VITE_SERVER_URL}/api/v1/requests`,
+                { to: id, amount: paise, note: note.trim() || undefined },
+                { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+            )
+            : axios.post(
+                `${import.meta.env.VITE_SERVER_URL}/api/v1/account/transfer`,
+                { to: id, amount: paise, note: note.trim() || undefined, pin },
+                { headers: { Authorization: `Bearer ${localStorage.getItem("token")}`, "Idempotency-Key": idempotencyKey } }
+            );
         try {
             await toast.promise(
-                axios.post(
-                    `${import.meta.env.VITE_SERVER_URL}/api/v1/account/transfer`,
-                    { to: id, amount: paise, note: note.trim() || undefined, pin },
-                    { headers: { Authorization: `Bearer ${localStorage.getItem("token")}`, "Idempotency-Key": idempotencyKey } }
-                ),
+                call,
                 {
-                    pending: "Sending money...",
-                    success: `${formatINR(paise)} sent to ${fname}`,
+                    pending: isRequest ? "Sending request..." : "Sending money...",
+                    success: isRequest ? `Asked ${fname} for ${formatINR(paise)}` : `${formatINR(paise)} sent to ${fname}`,
                     error: {
                         render({ data }) {
                             return data?.response?.data?.message || "Transfer failed";
@@ -53,7 +62,7 @@ export const SendMoney = () => {
                     },
                 }
             );
-            navigate("/dashboard");
+            navigate(isRequest ? "/requests" : "/dashboard");
         } catch {
             setSending(false);
         }
@@ -61,14 +70,14 @@ export const SendMoney = () => {
 
     return <AuthCard>
         <form onSubmit={onSubmit}>
-            <Heading label={"Send money"} />
+            <Heading label={isRequest ? "Request money" : "Send money"} />
 
             <div className="mt-6 flex items-center gap-3 rounded-xl bg-slate-50 p-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand text-white font-semibold">
                     {fname[0]?.toUpperCase()}
                 </div>
                 <div>
-                    <p className="text-xs text-slate-500">Paying</p>
+                    <p className="text-xs text-slate-500">{isRequest ? "Asking" : "Paying"}</p>
                     <p className="font-medium">{fname} {lname}</p>
                 </div>
             </div>
@@ -109,7 +118,7 @@ export const SendMoney = () => {
                 />
             </label>
 
-            <label className="mt-4 block">
+            {!isRequest && <label className="mt-4 block">
                 <span className="mb-1.5 flex justify-between text-sm font-medium text-slate-700">
                     Transaction PIN <Link to="/profile" className="font-normal text-brand hover:underline">Set / change PIN</Link>
                 </span>
@@ -124,10 +133,10 @@ export const SendMoney = () => {
                     className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm tracking-[0.4em] outline-none transition placeholder:text-slate-400 focus:border-brand focus:ring-4 focus:ring-brand/15"
                     required
                 />
-            </label>
+            </label>}
 
             <div className="mt-6 space-y-3">
-                <Button type="submit" label={sending ? "Sending..." : "Pay now"} disabled={sending} />
+                <Button type="submit" label={sending ? "Sending..." : isRequest ? "Send request" : "Pay now"} disabled={sending} />
                 <Button variant="secondary" onPress={() => navigate("/dashboard")} label={"Back to dashboard"} />
             </div>
         </form>

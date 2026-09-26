@@ -6,10 +6,10 @@ import { AppBar } from "../Components/AppBar";
 import { InputBox } from "../Components/InputBox";
 import { Button } from "../Components/Button";
 
-export const api = import.meta.env.VITE_SERVER_URL + "/api/v1/user";
-export const auth = () => ({ headers: { authorization: "Bearer " + localStorage.getItem("token") } });
+const api = import.meta.env.VITE_SERVER_URL + "/api/v1/user";
+const auth = () => ({ headers: { authorization: "Bearer " + localStorage.getItem("token") } });
 
-export const Card = ({ title, subtitle, children }) => (
+const Card = ({ title, subtitle, children }) => (
     <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
         <h2 className="text-base font-semibold">{title}</h2>
         {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
@@ -278,7 +278,7 @@ const TwoFactorCard = ({ me, onChanged }) => {
             <div className="flex flex-col sm:flex-row gap-5 items-center">
                 <img src={setup.qr} alt="QR code for your authenticator app" className="h-44 w-44 rounded-xl border border-slate-200" />
                 <form onSubmit={enable} className="w-full">
-                    <p className="mb-3 text-xs text-slate-500 break-all">Can't scan? Enter this key: <span className="font-mono text-slate-900">{setup.secret}</span></p>
+                    <p className="mb-3 text-xs text-slate-500 break-all">Can&apos;t scan? Enter this key: <span className="font-mono text-slate-900">{setup.secret}</span></p>
                     <InputBox onChange={e => setCode(e.target.value.trim())} label="6 digit code" placeholder="123 456" autoComplete="one-time-code" />
                     <Button type="submit" label={busy ? "Checking..." : "Turn on"} disabled={busy} />
                 </form>
