@@ -11,6 +11,14 @@ export const Dashboard = () => {
   const navigate = useNavigate();
   const [balance, setBalance] = useState(null);
   const [loading, setLoading] = useState(true);
+  // "add money" only shows when the server has razorpay keys
+  const [canTopUp, setCanTopUp] = useState(false);
+
+  useEffect(() => {
+    axios.get(import.meta.env.VITE_SERVER_URL + "/api/v1/payments/config", {
+      headers: { authorization: "Bearer " + localStorage.getItem("token") },
+    }).then(r => setCanTopUp(r.data.enabled)).catch(() => {});
+  }, []);
 
 
   useEffect(() => {
@@ -53,6 +61,11 @@ export const Dashboard = () => {
             ? <div className="h-12 w-48 rounded-lg bg-white/15 animate-pulse" />
             : <Balance label={balance} />}
         </div>
+        {canTopUp && (
+          <Link to="/add-money" className="mt-5 inline-block rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-white hover:text-brand-navy transition-colors">
+            + Add money
+          </Link>
+        )}
       </section>
 
       <Users />

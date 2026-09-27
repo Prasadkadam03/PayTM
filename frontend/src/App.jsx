@@ -17,6 +17,7 @@ import { Profile } from "./pages/Profile";
 import { TransactionDetail } from "./pages/TransactionDetail";
 import { Requests } from "./pages/Requests";
 import { Split } from "./pages/Split";
+import { AddMoney } from "./pages/AddMoney";
 import { ProtectedRoute, GuestRoute } from "./Components/RouteGuards";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -36,6 +37,7 @@ function App() {
           <Route path="/transactions/:id" element={<ProtectedRoute><TransactionDetail /></ProtectedRoute>} />
           <Route path="/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
           <Route path="/split" element={<ProtectedRoute><Split /></ProtectedRoute>} />
+          <Route path="/add-money" element={<ProtectedRoute><AddMoney /></ProtectedRoute>} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/forgot-password" element={<GuestRoute><ForgotPassword /></GuestRoute>} />
           <Route path="/reset-password" element={<ResetPassword />} />
