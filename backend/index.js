@@ -6,6 +6,7 @@ const mongoSanitize = require("express-mongo-sanitize");
 const hpp = require("hpp");
 const cookieParser = require("cookie-parser");
 const rootRouter = require("./routes/index");
+const { webhook: razorpayWebhook } = require("./routes/payments");
 const dotEnv = require("dotenv");
 const { default: mongoose } = require('mongoose');
 const { loadConfig } = require("./config");
@@ -33,6 +34,8 @@ app.use(cors({
     // the refresh token travels as a cookie
     credentials: true
 }));
+// razorpay signs the exact bytes it sends, so this one route gets the raw body (before express.json)
+app.post("/api/v1/payments/webhook", express.raw({ type: "application/json", limit: "100kb" }), razorpayWebhook);
 app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
 // strips keys starting with $ or containing . so user input can't become a mongo operator

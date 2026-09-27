@@ -75,10 +75,11 @@ const transactionSchema = new mongoose.Schema({
         enum: ['transfer', 'request', 'topup'],
         default: 'transfer'
     },
+    // a top-up comes from outside the wallet, so it has no sender
     from: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        required: function () { return this.type !== 'topup'; }
     },
     to: {
         type: mongoose.Schema.Types.ObjectId,
@@ -102,13 +103,18 @@ const transactionSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['success', 'failed'],
+        enum: ['pending', 'success', 'failed'],
         default: 'success'
     }
 }, { timestamps: true });
 
 // same Idempotency-Key from the same sender = the same payment, even if retried in parallel
 transactionSchema.add({ idempotencyKey: String });
+
+// razorpay top-ups: one transaction per order, one credit per payment
+transactionSchema.add({ razorpayOrderId: String, razorpayPaymentId: String });
+transactionSchema.index({ razorpayOrderId: 1 }, { unique: true, partialFilterExpression: { razorpayOrderId: { $type: "string" } } });
+transactionSchema.index({ razorpayPaymentId: 1 }, { unique: true, partialFilterExpression: { razorpayPaymentId: { $type: "string" } } });
 transactionSchema.index(
     { from: 1, idempotencyKey: 1 },
     { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string" } } }
