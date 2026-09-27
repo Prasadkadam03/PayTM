@@ -5,6 +5,7 @@ const zod = require("zod");
 const { User, Account, AuditLog, Session, isEmailVerified } = require("../db");
 const { createToken, consumeToken, cancelTokens } = require("../utils/oneTimeToken");
 const { sendVerificationEmail, sendPasswordResetEmail, sendNewLoginEmail } = require("../services/mail");
+const { notifySecurity } = require("../socket/notify");
 const { audit } = require("../utils/audit");
 const { hashPin, isWeakPin } = require("../services/pin");
 const { startSetup, checkCode, newBackupCodes, verifySecondFactor, signMfaToken, verifyMfaToken } = require("../services/totp");
@@ -140,6 +141,7 @@ const completeSignin = async (req, res, user) => {
     if (!knownDevice) {
         // not awaited: a slow mail provider must not slow down sign in
         sendNewLoginEmail(user, { ip: req.ip, userAgent, at: new Date() });
+        notifySecurity(user._id, "New sign in from another device. If this was not you, change your password.");
     }
     return token;
 };

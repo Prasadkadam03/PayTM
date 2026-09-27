@@ -6,6 +6,7 @@ const { authMiddleware } = require("../middleware");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { audit } = require("../utils/audit");
 const { accountLimiter } = require("../rateLimit");
+const { notifyTransaction } = require("../socket/notify");
 const {
     MIN_TOPUP, MAX_TOPUP, PaymentError, isEnabled,
     createTopupOrder, checkoutSignatureOk, webhookSignatureOk, creditTopup
@@ -72,6 +73,7 @@ router.post("/verify", authMiddleware, asyncHandler(async (req, res) => {
     try {
         const { transaction, credited } = await creditTopup({ orderId, paymentId });
         if (credited) {
+            notifyTransaction(transaction);
             await audit(req, "topup", { meta: { orderId, amount: transaction.amount } });
         }
         res.json({ message: "Money added", transactionId: transaction._id, amount: transaction.amount });
@@ -106,6 +108,7 @@ const webhook = asyncHandler(async (req, res) => {
     try {
         const { transaction, credited } = await creditTopup({ orderId: payment.order_id, paymentId: payment.id, amount: payment.amount });
         if (credited) {
+            notifyTransaction(transaction);
             await audit(req, "topup", { userId: transaction.to, meta: { orderId: payment.order_id, amount: transaction.amount, via: "webhook" } });
         }
         res.json({ ok: true });

@@ -10,6 +10,7 @@ const { audit } = require("../utils/audit");
 const { transferMoney, assertCanSend, TransferError } = require("../services/transfer");
 const { transferLimiter, requestLimiter } = require("../rateLimit");
 const { REQUEST_TTL_MS, MAX_OPEN_REQUESTS, expireOld } = require("../services/requestRules");
+const { notifyTransaction, notifyRequestCreated, notifyRequestUpdated } = require("../socket/notify");
 
 const router = express.Router();
 
@@ -54,6 +55,7 @@ router.post("/", authMiddleware, requestLimiter, asyncHandler(async (req, res) =
         expiresAt: new Date(Date.now() + REQUEST_TTL_MS)
     });
     await audit(req, "request_created", { meta: { requestId: request._id, to, amount } });
+    notifyRequestCreated(request);
     res.status(201).json({ message: "Request sent", requestId: request._id });
 }));
 
@@ -143,6 +145,8 @@ router.post("/:id/pay", authMiddleware, transferLimiter, asyncHandler(async (req
         });
 
         await audit(req, "request_paid", { meta: { requestId: request._id, transactionId: transaction._id } });
+        notifyTransaction(transaction);
+        notifyRequestUpdated(request, "paid", request.from);
         res.json({ message: "Request paid", transactionId: transaction._id });
     } catch (err) {
         if (err instanceof TransferError) {
@@ -167,6 +171,7 @@ const close = (who, status, event) => asyncHandler(async (req, res) => {
         return res.status(exists ? 409 : 404).json({ message: exists ? "This request was already handled" : "Request not found" });
     }
     await audit(req, event, { meta: { requestId: updated._id } });
+    notifyRequestUpdated(updated, status, who === "to" ? updated.from : updated.to);
     res.json({ message: `Request ${status}` });
 });
 

@@ -4,6 +4,7 @@ const bcrypt = require("bcrypt");
 const { User } = require("../db");
 const { audit } = require("../utils/audit");
 const { sendPinLockedEmail } = require("./mail");
+const { notifySecurity } = require("../socket/notify");
 
 const MAX_ATTEMPTS = 5;
 const LOCK_MINUTES = 30;
@@ -58,6 +59,7 @@ const verifyPin = async (req, user, pin) => {
         );
         await audit(req, "pin_locked", { userId: user._id });
         sendPinLockedEmail(user, LOCK_MINUTES);
+        notifySecurity(user._id, "Your transaction PIN was locked after too many wrong attempts");
         throw new PinError(`Too many wrong attempts, PIN locked for ${LOCK_MINUTES} minutes`, 423);
     }
 

@@ -9,6 +9,7 @@ const { asyncHandler } = require("../utils/asyncHandler");
 const { audit } = require("../utils/audit");
 const { requestLimiter } = require("../rateLimit");
 const { REQUEST_TTL_MS, MAX_OPEN_REQUESTS, expireOld } = require("../services/requestRules");
+const { notifyRequestCreated } = require("../socket/notify");
 
 const router = express.Router();
 
@@ -91,11 +92,13 @@ router.post("/", authMiddleware, requestLimiter, asyncHandler(async (req, res) =
     // the split and all of its requests are created together or not at all
     const session = await mongoose.startSession();
     let split;
+    // kept outside so the live updates go out only after the commit
+    let requests = [];
     try {
         await session.withTransaction(async () => {
             const expiresAt = new Date(Date.now() + REQUEST_TTL_MS);
             const splitId = new mongoose.Types.ObjectId();
-            const requests = await MoneyRequest.create(plan.shares.map(s => ({
+            requests = await MoneyRequest.create(plan.shares.map(s => ({
                 from: req.userId,
                 to: s.userId,
                 amount: s.share,
@@ -118,6 +121,7 @@ router.post("/", authMiddleware, requestLimiter, asyncHandler(async (req, res) =
     }
 
     await audit(req, "split_created", { meta: { splitId: split._id, total, people: ids.length } });
+    requests.forEach(notifyRequestCreated);
     res.status(201).json({ message: "Split created", splitId: split._id, creatorShare: plan.creatorShare });
 }));
 

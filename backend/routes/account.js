@@ -8,6 +8,7 @@ const zod = require("zod");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { audit } = require("../utils/audit");
 const { writeReceipt } = require("../services/receipt");
+const { notifyTransaction } = require("../socket/notify");
 const { transferLimiter } = require("../rateLimit");
 
 const router = express.Router();
@@ -69,6 +70,7 @@ router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (re
 
         if (!raced) {
             await audit(req, "transfer", { meta: { to, amount, transactionId: transaction._id } });
+            notifyTransaction(transaction);
         }
 
         res.json({

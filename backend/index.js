@@ -1,5 +1,6 @@
 // backend/index.js
 const express = require('express');
+const http = require("node:http");
 const cors = require("cors");
 const helmet = require("helmet");
 const mongoSanitize = require("express-mongo-sanitize");
@@ -10,6 +11,7 @@ const { webhook: razorpayWebhook } = require("./routes/payments");
 const dotEnv = require("dotenv");
 const { default: mongoose } = require('mongoose');
 const { loadConfig } = require("./config");
+const { initRealtime } = require("./socket");
 
 const app = express();
 dotEnv.config();
@@ -64,7 +66,10 @@ app.use((err, req, res, next) => {
 const start = async () => {
     const config = loadConfig();
     await mongoose.connect(config.DBURL);
-    app.listen(config.PORT, () => {
+    // one http server for the api and socket.io, so live updates use the same port and origin
+    const server = http.createServer(app);
+    initRealtime(server, allowedOrigins);
+    server.listen(config.PORT, () => {
         console.log(`server running on port ${config.PORT}`);
     });
 };
