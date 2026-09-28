@@ -34,8 +34,7 @@ export const History = () => {
 
     useEffect(() => {
         let ignore = false;
-        setLoading(true);
-        fetchPage(type)
+        const load = () => fetchPage(type)
             .then((response) => {
                 if (ignore) return;
                 setTransactions(response.data.transactions);
@@ -43,7 +42,15 @@ export const History = () => {
             })
             .catch((err) => console.log("error=" + err))
             .finally(() => !ignore && setLoading(false));
-        return () => { ignore = true; };
+
+        setLoading(true);
+        load();
+        // a live update reloads the first page (newest first, so new rows show at the top)
+        window.addEventListener("paytm:refresh", load);
+        return () => {
+            ignore = true;
+            window.removeEventListener("paytm:refresh", load);
+        };
     }, [type]);
 
     const loadMore = async () => {

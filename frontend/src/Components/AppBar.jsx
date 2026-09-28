@@ -1,12 +1,16 @@
 import axios from "axios";
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom";
+import { startRealtime, stopRealtime } from "../utils/realtime";
 
 export const AppBar = () => {
 
     const [firstName, setFirstName] = useState("");
     const [pendingRequests, setPendingRequests] = useState(0);
     const navigate = useNavigate();
+
+    // every signed in page has the app bar, so live updates start here
+    useEffect(() => { startRealtime(); }, []);
 
     // badge: requests waiting for me to pay. refreshed whenever the app says something changed
     useEffect(() => {
@@ -39,6 +43,7 @@ export const AppBar = () => {
         await axios.post(import.meta.env.VITE_SERVER_URL + "/api/v1/user/logout", null, {
             headers: { authorization: "Bearer " + localStorage.getItem("token") },
         }).catch(() => {});
+        stopRealtime();
         localStorage.removeItem("token");
         navigate("/signin");
     };

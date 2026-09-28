@@ -22,11 +22,9 @@ export const Dashboard = () => {
 
 
   useEffect(() => {
-    const userToken = localStorage.getItem("token");
-
-    axios.get(import.meta.env.VITE_SERVER_URL + "/api/v1/account/balance", {
+    const loadBalance = () => axios.get(import.meta.env.VITE_SERVER_URL + "/api/v1/account/balance", {
       headers: {
-        authorization: "Bearer " + userToken,
+        authorization: "Bearer " + localStorage.getItem("token"),
       },
     })
       .then((response) => {
@@ -37,6 +35,10 @@ export const Dashboard = () => {
         navigate("/signin");
       })
 
+    loadBalance();
+    // money came in or went out (live update): show the new balance
+    window.addEventListener("paytm:refresh", loadBalance);
+    return () => window.removeEventListener("paytm:refresh", loadBalance);
   }, []);
 
   return <div className="min-h-screen">
