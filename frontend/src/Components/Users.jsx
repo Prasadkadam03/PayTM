@@ -78,11 +78,19 @@ function User({ user }) {
             <span className="truncate text-sm font-medium">{user.firstName} {user.lastName}</span>
         </div>
 
-        <button
-            onClick={() => navigate("/send?" + params.toString())}
-            className="shrink-0 rounded-lg bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-navy transition-colors"
-        >
-            Send
-        </button>
+        <div className="flex shrink-0 gap-2">
+            <button
+                onClick={() => navigate("/send?mode=request&" + params.toString())}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-brand-navy hover:border-brand hover:text-brand transition-colors"
+            >
+                Request
+            </button>
+            <button
+                onClick={() => navigate("/send?" + params.toString())}
+                className="rounded-lg bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-navy transition-colors"
+            >
+                Send
+            </button>
+        </div>
     </li>
 }

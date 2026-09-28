@@ -2,9 +2,13 @@
 const express = require('express');
 const { authMiddleware } = require('../middleware');
 const { Account, Transaction } = require('../db');
+const { transferMoney, findReplay, assertCanSend, TransferError } = require("../services/transfer");
 const { default: mongoose } = require('mongoose');
 const zod = require("zod");
 const { asyncHandler } = require("../utils/asyncHandler");
+const { audit } = require("../utils/audit");
+const { writeReceipt } = require("../services/receipt");
+const { notifyTransaction } = require("../socket/notify");
 const { transferLimiter } = require("../rateLimit");
 
 const router = express.Router();
@@ -30,11 +34,9 @@ const transferBody = zod.object({
     // amount is in paise
     amount: zod.number().int("Invalid amount").positive("Invalid amount").max(Number.MAX_SAFE_INTEGER),
     // control characters are stripped, the rest is escaped by react when shown
-    note: zod.string().transform(s => s.replace(/[\u0000-\u001f\u007f]/g, "").trim()).pipe(zod.string().max(100, "Note can be at most 100 characters")).optional()
+    note: zod.string().transform(s => s.replace(/[\u0000-\u001f\u007f]/g, "").trim()).pipe(zod.string().max(100, "Note can be at most 100 characters")).optional(),
+    pin: zod.string({ required_error: "Enter your transaction PIN" }).max(6)
 })
-
-// a business rule failure (4xx), as opposed to a database error
-class TransferError extends Error {}
 
 router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (req, res) => {
     const parsed = transferBody.safeParse(req.body);
@@ -43,56 +45,42 @@ router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (re
             message: parsed.error.issues[0].message
         });
     }
-    const { amount, to, note } = parsed.data;
+    const { amount, to, note, pin } = parsed.data;
 
-    if (to === String(req.userId)) {
+    const idempotencyKey = req.get("Idempotency-Key");
+    if (idempotencyKey !== undefined && !/^[A-Za-z0-9-]{8,64}$/.test(idempotencyKey)) {
         return res.status(400).json({
-            message: "You cannot send money to yourself"
+            message: "Invalid Idempotency-Key"
         });
     }
 
-    const session = await mongoose.startSession();
-
     try {
-        let transaction;
+        // a retry of a payment that already went through gets the same answer, nothing moves twice
+        const replay = await findReplay(req.userId, idempotencyKey, { toUserId: to, amount });
+        if (replay) {
+            return res.json({
+                message: "Transfer successful",
+                transactionId: replay.transaction._id,
+                replayed: true
+            });
+        }
 
-        // withTransaction retries the whole callback when two transfers touch the same
-        // account at once (WriteConflict), instead of failing the user's request
-        await session.withTransaction(async () => {
-            const toAccount = await Account.findOne({ userId: to }).session(session);
+        await assertCanSend(req, req.userId, pin);
+        const { transaction, replay: raced } = await transferMoney({ fromUserId: req.userId, toUserId: to, amount, note, idempotencyKey });
 
-            if (!toAccount) {
-                throw new TransferError("Invalid account");
-            }
-
-            // check and debit in one atomic update, so two parallel transfers can never overdraw
-            const debit = await Account.updateOne(
-                { userId: req.userId, balance: { $gte: amount } },
-                { $inc: { balance: -amount } }
-            ).session(session);
-
-            if (debit.modifiedCount !== 1) {
-                throw new TransferError("Insufficient balance !");
-            }
-
-            await Account.updateOne({ userId: to }, { $inc: { balance: amount } }).session(session);
-
-            // the record is part of the same mongo transaction, so it exists only if the money moved
-            [transaction] = await Transaction.create([{
-                from: req.userId,
-                to,
-                amount,
-                note: note || undefined
-            }], { session });
-        });
+        if (!raced) {
+            await audit(req, "transfer", { meta: { to, amount, transactionId: transaction._id } });
+            notifyTransaction(transaction);
+        }
 
         res.json({
             message: "Transfer successful",
-            transactionId: transaction._id
+            transactionId: transaction._id,
+            ...(raced ? { replayed: true } : {})
         });
     } catch (err) {
         if (err instanceof TransferError) {
-            return res.status(400).json({
+            return res.status(err.status).json({
                 message: err.message
             });
         }
@@ -100,8 +88,6 @@ router.post("/transfer", authMiddleware, transferLimiter, asyncHandler(async (re
         res.status(500).json({
             message: "Transfer failed, please try again"
         });
-    } finally {
-        await session.endSession();
     }
 }));
 
@@ -146,6 +132,7 @@ router.get("/transactions", authMiddleware, asyncHandler(async (req, res) => {
             const other = sent ? t.to : t.from;
             return {
                 _id: t._id,
+                type: t.type || "transfer",
                 direction: sent ? "sent" : "received",
                 amount: t.amount,
                 note: t.note || "",
@@ -158,6 +145,49 @@ router.get("/transactions", authMiddleware, asyncHandler(async (req, res) => {
         }),
         nextCursor: hasMore ? page[page.length - 1]._id : null
     });
+}));
+
+// a transaction the signed in user took part in, or null. anyone else gets a 404,
+// which doesn't even confirm the transaction exists
+const findMyTransaction = async (req, id) => {
+    if (!/^[a-f\d]{24}$/i.test(id)) return null;
+    return Transaction.findOne({ _id: id, $or: [{ from: req.userId }, { to: req.userId }] })
+        .populate("from", "firstName lastName")
+        .populate("to", "firstName lastName")
+        .lean();
+};
+
+const person = (user) => (user ? { _id: user._id, firstName: user.firstName, lastName: user.lastName } : null);
+
+router.get("/transactions/:id", authMiddleware, asyncHandler(async (req, res) => {
+    const t = await findMyTransaction(req, req.params.id);
+    if (!t) {
+        return res.status(404).json({ message: "Transaction not found" });
+    }
+    res.json({
+        transaction: {
+            _id: t._id,
+            type: t.type || "transfer",
+            direction: String(t.from?._id) === String(req.userId) ? "sent" : "received",
+            amount: t.amount,
+            note: t.note || "",
+            status: t.status,
+            createdAt: t.createdAt,
+            from: person(t.from),
+            to: person(t.to)
+        }
+    });
+}));
+
+router.get("/transactions/:id/receipt", authMiddleware, asyncHandler(async (req, res) => {
+    const t = await findMyTransaction(req, req.params.id);
+    if (!t) {
+        return res.status(404).json({ message: "Transaction not found" });
+    }
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="paytm-receipt-${t._id}.pdf"`);
+    res.setHeader("Cache-Control", "private, no-store");
+    writeReceipt(t, res);
 }));
 
 module.exports = router;

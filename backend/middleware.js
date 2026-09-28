@@ -1,5 +1,8 @@
 const jwt = require("jsonwebtoken");
 
+const ISSUER = "paytm-api";
+const AUDIENCE = "paytm-web";
+
 const authMiddleware = (req, res, next) => {
     const authHeader = req.headers.authorization;
 
@@ -10,9 +13,10 @@ const authMiddleware = (req, res, next) => {
     const token = authHeader.split(' ')[1];
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = verifyAccessToken(token);
 
         req.userId = decoded.userId;
+        req.sessionId = decoded.sid;
 
         next();
     } catch (err) {
@@ -23,11 +27,24 @@ const authMiddleware = (req, res, next) => {
     }
 };
 
-const signToken = (userId) => jwt.sign({ userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "1d"
+// short lived access token. sid ties it to the refresh session it came from
+const signToken = (userId, sessionId) => jwt.sign(
+    { userId: String(userId), sid: sessionId ? String(sessionId) : undefined },
+    process.env.JWT_SECRET,
+    {
+        expiresIn: process.env.JWT_EXPIRES_IN || "15m",
+        issuer: ISSUER,
+        audience: AUDIENCE
+    }
+);
+
+const verifyAccessToken = (token) => jwt.verify(token, process.env.JWT_SECRET, {
+    issuer: ISSUER,
+    audience: AUDIENCE
 });
 
 module.exports = {
     authMiddleware,
-    signToken
+    signToken,
+    verifyAccessToken
 }

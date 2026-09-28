@@ -1,16 +1,26 @@
 // backend/index.js
 const express = require('express');
+const http = require("node:http");
 const cors = require("cors");
 const helmet = require("helmet");
+const mongoSanitize = require("express-mongo-sanitize");
+const hpp = require("hpp");
+const cookieParser = require("cookie-parser");
 const rootRouter = require("./routes/index");
+const { webhook: razorpayWebhook } = require("./routes/payments");
 const dotEnv = require("dotenv");
 const { default: mongoose } = require('mongoose');
 const { loadConfig } = require("./config");
+const { initRealtime } = require("./socket");
 
 const app = express();
 dotEnv.config();
 
 app.disable("x-powered-by");
+// behind render's proxy the real client ip is in X-Forwarded-For (used by rate limits and the audit log)
+if (process.env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+}
 app.use(helmet());
 // only the frontend origins listed in CORS_ORIGIN (comma separated) may call the api from a browser
 const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
@@ -22,9 +32,18 @@ app.use(cors({
     origin: (origin, callback) => {
         // requests without an Origin header (curl, server to server) are not subject to CORS
         callback(null, !origin || allowedOrigins.includes(origin));
-    }
+    },
+    // the refresh token travels as a cookie
+    credentials: true
 }));
+// razorpay signs the exact bytes it sends, so this one route gets the raw body (before express.json)
+app.post("/api/v1/payments/webhook", express.raw({ type: "application/json", limit: "100kb" }), razorpayWebhook);
 app.use(express.json({ limit: "10kb" }));
+app.use(cookieParser());
+// strips keys starting with $ or containing . so user input can't become a mongo operator
+app.use(mongoSanitize());
+// ?type=sent&type=received -> last value only, so query params are always strings
+app.use(hpp());
 
 app.use("/api/v1", rootRouter);
 
@@ -47,7 +66,10 @@ app.use((err, req, res, next) => {
 const start = async () => {
     const config = loadConfig();
     await mongoose.connect(config.DBURL);
-    app.listen(config.PORT, () => {
+    // one http server for the api and socket.io, so live updates use the same port and origin
+    const server = http.createServer(app);
+    initRealtime(server, allowedOrigins);
+    server.listen(config.PORT, () => {
         console.log(`server running on port ${config.PORT}`);
     });
 };
