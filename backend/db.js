@@ -288,6 +288,32 @@ const auditLogSchema = new mongoose.Schema({
 
 auditLogSchema.index({ userId: 1, _id: -1 });
 
+// Anonymous Kingdom Wars analytics. A completed battle is one immutable row.
+// The client-generated playId makes retries safe without growing arrays on a player record.
+const gamePlaySchema = new mongoose.Schema({
+    playId: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true
+    },
+    visitorId: {
+        type: String,
+        required: true,
+        index: true,
+        trim: true
+    },
+    name: {
+        type: String,
+        required: true,
+        trim: true,
+        minLength: 1,
+        maxLength: 24
+    }
+}, { timestamps: { createdAt: true, updatedAt: false } });
+
+gamePlaySchema.index({ visitorId: 1, createdAt: -1 });
+
 const Account = mongoose.model('Account', accountSchema);
 const User = mongoose.model('User', userSchema);
 const Transaction = mongoose.model('Transaction', transactionSchema);
@@ -296,6 +322,7 @@ const Session = mongoose.model('Session', sessionSchema);
 const OneTimeToken = mongoose.model('OneTimeToken', oneTimeTokenSchema);
 const MoneyRequest = mongoose.model('MoneyRequest', moneyRequestSchema);
 const Split = mongoose.model('Split', splitSchema);
+const GamePlay = mongoose.model('GamePlay', gamePlaySchema);
 
 module.exports = {
     isEmailVerified,
@@ -306,6 +333,7 @@ module.exports = {
     Account,
     Transaction,
     AuditLog,
-    Session
+    Session,
+    GamePlay
 };
 

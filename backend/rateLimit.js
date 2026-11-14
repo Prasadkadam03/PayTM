@@ -88,6 +88,24 @@ const transferLimiter = rateLimit({
     message: message("Too many transfers, please wait a minute")
 });
 
+// Public game analytics. Generous enough for shared networks, bounded enough to stop a
+// broken client or simple spam from flooding MongoDB.
+const gamePlayLimiter = rateLimit({
+    ...common,
+    windowMs: 60 * 60 * 1000,
+    limit: 60,
+    keyGenerator: (req) => `game-play:${ipKeyGenerator(req.ip)}`,
+    message: message("Too many completed battles, please try again later")
+});
+
+const gameDashboardLimiter = rateLimit({
+    ...common,
+    windowMs: 15 * 60 * 1000,
+    limit: 120,
+    keyGenerator: (req) => `game-dashboard:${ipKeyGenerator(req.ip)}`,
+    message: message("Too many dashboard requests, please try again later")
+});
+
 module.exports = {
     authLimiter,
     signinLimiter,
@@ -95,5 +113,7 @@ module.exports = {
     accountLimiter,
     refreshLimiter,
     requestLimiter,
-    transferLimiter
+    transferLimiter,
+    gamePlayLimiter,
+    gameDashboardLimiter
 }

@@ -7,6 +7,7 @@ const mongoSanitize = require("express-mongo-sanitize");
 const hpp = require("hpp");
 const cookieParser = require("cookie-parser");
 const rootRouter = require("./routes/index");
+const gameRouter = require("./routes/game");
 const { webhook: razorpayWebhook } = require("./routes/payments");
 const dotEnv = require("dotenv");
 const { default: mongoose } = require('mongoose');
@@ -22,6 +23,8 @@ if (process.env.NODE_ENV === "production") {
     app.set("trust proxy", 1);
 }
 app.use(helmet());
+// Public, cookie-free Kingdom Wars analytics are mounted before PayTM's restricted CORS.
+app.use("/api/v1/game", gameRouter);
 // only the frontend origins listed in CORS_ORIGIN (comma separated) may call the api from a browser
 const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
     .split(",")
