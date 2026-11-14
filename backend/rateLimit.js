@@ -98,6 +98,14 @@ const gamePlayLimiter = rateLimit({
     message: message("Too many completed battles, please try again later")
 });
 
+const gamePlayerLimiter = rateLimit({
+    ...common,
+    windowMs: 60 * 60 * 1000,
+    limit: 60,
+    keyGenerator: (req) => `game-player:${ipKeyGenerator(req.ip)}`,
+    message: message("Too many player updates, please try again later")
+});
+
 const gameDashboardLimiter = rateLimit({
     ...common,
     windowMs: 15 * 60 * 1000,
@@ -114,6 +122,7 @@ module.exports = {
     refreshLimiter,
     requestLimiter,
     transferLimiter,
+    gamePlayerLimiter,
     gamePlayLimiter,
     gameDashboardLimiter
 }

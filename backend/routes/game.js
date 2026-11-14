@@ -3,8 +3,8 @@ const cors = require("cors");
 const mongoSanitize = require("express-mongo-sanitize");
 const hpp = require("hpp");
 const zod = require("zod");
-const { GamePlay } = require("../db");
-const { gamePlayLimiter, gameDashboardLimiter } = require("../rateLimit");
+const { GamePlayer, GamePlay } = require("../db");
+const { gamePlayerLimiter, gamePlayLimiter, gameDashboardLimiter } = require("../rateLimit");
 const { asyncHandler } = require("../utils/asyncHandler");
 
 const uuid = zod.string().uuid("Invalid identifier");
@@ -18,12 +18,19 @@ const playBody = zod.object({
     name: cleanName
 }).strict();
 
+const playerBody = zod.object({
+    visitorId: uuid,
+    name: cleanName
+}).strict();
+
 const duplicatePlay = (error) => error?.code === 11000 && (
     error?.keyPattern?.playId || error?.keyValue?.playId
 );
 
 function createGameRouter({
+    GamePlayerModel = GamePlayer,
     GamePlayModel = GamePlay,
+    playerWriteLimiter = gamePlayerLimiter,
     writeLimiter = gamePlayLimiter,
     readLimiter = gameDashboardLimiter
 } = {}) {
@@ -36,25 +43,51 @@ function createGameRouter({
     router.use(mongoSanitize());
     router.use(hpp());
 
+    const upsertPlayer = (player) => GamePlayerModel.updateOne(
+        { visitorId: player.visitorId },
+        { $set: { name: player.name } },
+        { upsert: true, runValidators: true }
+    );
+
+    router.post("/players", playerWriteLimiter, asyncHandler(async (req, res) => {
+        const parsed = playerBody.safeParse(req.body);
+        if (!parsed.success) {
+            return res.status(400).json({ message: parsed.error.issues[0].message });
+        }
+
+        const result = await upsertPlayer(parsed.data);
+        return res.status(result.upsertedCount ? 201 : 200).json({ registered: true });
+    }));
+
     router.post("/plays", writeLimiter, asyncHandler(async (req, res) => {
         const parsed = playBody.safeParse(req.body);
         if (!parsed.success) {
             return res.status(400).json({ message: parsed.error.issues[0].message });
         }
 
+        let counted = true;
         try {
             await GamePlayModel.create(parsed.data);
-            return res.status(201).json({ counted: true });
         } catch (error) {
             if (duplicatePlay(error)) {
-                return res.json({ counted: false });
+                counted = false;
+            } else {
+                throw error;
             }
-            throw error;
         }
+
+        // Also register from a completed play. This covers old clients and a profile request
+        // that loses a race with the first completed battle.
+        await upsertPlayer(parsed.data);
+        return res.status(counted ? 201 : 200).json({ counted });
     }));
 
     router.get("/dashboard", readLimiter, asyncHandler(async (_req, res) => {
-        const [players, plays] = await Promise.all([
+        const [registeredPlayers, playedPlayers, plays] = await Promise.all([
+            GamePlayerModel.find(
+                {},
+                { _id: 0, visitorId: 1, name: 1, createdAt: 1, updatedAt: 1 }
+            ).lean(),
             GamePlayModel.aggregate([
                 { $sort: { createdAt: 1, _id: 1 } },
                 {
@@ -70,6 +103,7 @@ function createGameRouter({
                 {
                     $project: {
                         _id: 0,
+                        visitorId: "$_id",
                         name: 1,
                         playCount: 1,
                         firstPlayedAt: 1,
@@ -79,6 +113,31 @@ function createGameRouter({
             ]),
             GamePlayModel.estimatedDocumentCount()
         ]);
+
+        const playerMap = new Map(registeredPlayers.map((player) => [player.visitorId, {
+            name: player.name,
+            playCount: 0,
+            firstPlayedAt: null,
+            lastPlayedAt: null,
+            lastActivityAt: player.updatedAt || player.createdAt
+        }]));
+
+        for (const player of playedPlayers) {
+            const registered = playerMap.get(player.visitorId);
+            playerMap.set(player.visitorId, {
+                name: registered?.name || player.name,
+                playCount: player.playCount,
+                firstPlayedAt: player.firstPlayedAt,
+                lastPlayedAt: player.lastPlayedAt,
+                lastActivityAt: player.lastPlayedAt
+            });
+        }
+
+        const players = [...playerMap.values()]
+            .sort((a, b) => b.playCount - a.playCount
+                || new Date(b.lastActivityAt).getTime() - new Date(a.lastActivityAt).getTime()
+                || a.name.localeCompare(b.name))
+            .map(({ lastActivityAt: _lastActivityAt, ...player }) => player);
 
         res.set("Cache-Control", "no-store");
         res.json({
@@ -95,3 +154,4 @@ const router = createGameRouter();
 module.exports = router;
 module.exports.createGameRouter = createGameRouter;
 module.exports.playBody = playBody;
+module.exports.playerBody = playerBody;
